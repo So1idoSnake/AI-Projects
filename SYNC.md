@@ -16,13 +16,25 @@ Git runs noninteractively with GIT_TERMINAL_PROMPT=0, GCM_INTERACTIVE=never, and
 credential.interactive=never. Missing authentication is reported rather than
 opening a sign-in dialog. Network attempts should be time-bounded.
 
-## Current limitation
+## Verified manual sync and remaining limitation
 
-The first interactive push was cancelled after its credential helper stalled.
-A noninteractive retry confirmed that usable command-line credentials were absent.
-The initial branches have NOT been confirmed on GitHub. Their commits are local.
-Configure a supported GitHub authentication method later and rerun the sync.
-Never paste or commit passwords, tokens, cookies or credential-store contents.
+On 2026-11-20, GitHub Desktop successfully published the existing branches:
+
+- backup/display-switcher-2026-11-20 at 149d2a24901da581dd508e59415a0009a835fdcb.
+- projects/consolidate-existing-work at bfea130c908394524d7e61aa3fb8891ca6e45e8d,
+  followed by the documentation update recording this sync.
+
+GitHub Desktop reported successful pushes and fetched matching remote-tracking
+commit hashes. The original checkout stayed on projects/consolidate-existing-work;
+the backup branch was published through an isolated local clone. Main was unchanged.
+
+The GitHub plugin authenticated as So1idoSnake, but reported no repository
+installations or accessible repositories. Noninteractive command-line Git still
+had no usable credentials. Desktop's successful manual sync does not establish
+that the daily automation can authenticate. Configure a supported noninteractive
+Git authentication method and verify a scheduled sync before treating automatic
+backup as operational. Never paste or commit passwords, tokens, cookies or
+credential-store contents.
 
 The schedule is stored by the app, not installed by cloning this repository.
 On a new computer, configure authentication and recreate the daily automation
