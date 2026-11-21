@@ -1,5 +1,9 @@
 # AW3926QW attended validation plan
 
+**Execution began 2026-11-21 with the user present.** The build is deployed for manual
+testing; see [results](AW3926QW-ATTENDED-RESULTS.md). The original preparation text below
+describes the earlier source-only boundary, not the current deployment status.
+
 Source development only is complete for this checkpoint. Every step below is
 deferred until the user is home and authorizes deployment/testing. No hardware,
 HDR/DV/DSC setting, RTSS value, service or startup entry was changed during coding.
@@ -72,7 +76,10 @@ whose saved state matches the actual display. Select `set monitor-4k` and check:
 - RTSS cap162, fullscreen/borderless, Alt-Tab and return-to-native work reliably.
 
 The source verifies the driver's reported geometry/scaling/HDR and expected signal
-and rejects substitution; visual behavior still must be checked. Do not add an
+and rejects substitution. If NVIDIA reports CCD identity for a smaller desktop,
+read-only NVAPI must confirm GPU-centered/no-scaling; identity alone is rejected.
+Require native -> 4K -> native, with visual confirmation on both ends, before calling
+the round trip passed. Visual behavior still must be checked. Do not add an
 EDID/custom resolution or choose Dell's built-in 4K mode to hide a failed test.
 If needed, compare those alternatives deliberately and record the result before
 changing the implementation. The preferred route remains NVIDIA/GPU management.

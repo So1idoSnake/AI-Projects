@@ -1,12 +1,13 @@
 # Gaming Display Controller
 
-Source status: AW3926QW profiles are prepared for attended testing on branch
-`projects/aw3926qw-profiles`. They are **not deployed or verified on hardware**.
-The installed controller remains the old AW3423DW baseline. Do not run the new
-console/tray app or deploy it while the user is away.
+Status: attended testing began on 2026-11-21 on branch `projects/aw3926qw-profiles`.
+The AW3926QW build is deployed; the tray/watchdog remains stopped during manual tests.
+Native -> centered 4K -> native passed controller checks and user visual confirmation.
+The remaining attended checks are tracked in
+[the results](docs/AW3926QW-ATTENDED-RESULTS.md); the full setup is not yet validated.
 
 Read [WORK_IN_PROGRESS.md](WORK_IN_PROGRESS.md) for the source checkpoint and
-[the attended test plan](docs/AW3926QW-TEST-PLAN.md) before deployment.
+[the attended test plan](docs/AW3926QW-TEST-PLAN.md) before continuing validation.
 
 ## Source profiles
 
@@ -23,7 +24,7 @@ The new monitor identity is AW3926QW `DELA2F9`. The old `DELA1E4` monitor is not
 eligible for these new timings. TV identity rules remain LG/GSM and exact Samsung
 soundbar `SAM721B`; the virtual display remains `MTT1337`.
 
-## Commands after a future authorized deployment
+## Commands for the deployed attended-test build
 
 ```text
 DisplayController.exe status [--json]
@@ -45,7 +46,7 @@ DisplayController.exe tray
 `alienware`, `aw`, `monitor`, `alienware-native`, `monitor-native` and `monitor-5k2k`
 all select native 5K2K. Optional aliases are `alienware-330` / `monitor-330` and
 `alienware-4k` / `monitor-4k`. The tray exposes those same three monitor choices.
-Examples above document future operation; they are not a request to execute them.
+Examples document available commands; they are not a request to execute them.
 
 ## Optional-mode prerequisites and limits
 
@@ -59,7 +60,10 @@ The intended 4K approach is NVIDIA/GPU centering with the monitor remaining in
 native mode. The implementation requests centered 3840x2160 inside an existing
 5120x2160/~165 Hz target signal through Windows CCD. It preserves the native
 target timing and checks the driver's reported source size, signal, HDR and
-centering. It does not select Dell's built-in 4K mode, alter NVIDIA global
+centering. On the observed NVIDIA driver, CCD reports identity scaling despite
+GPU no-scaling. A read-only NVAPI query must confirm GPU-centered/no-scaling before
+that specific report is accepted; geometry/timing/HDR checks still apply.
+It does not select Dell's built-in 4K mode, alter NVIDIA global
 preferences, create custom timings, or toggle DSC. Driver acceptance is not a
 measured guarantee of GPU scaling, image quality, VRR or latency; confirm these
 in the attended test. No automatic Dell-mode fallback is implemented.
@@ -103,8 +107,8 @@ See [SOURCE_GUIDE.md](SOURCE_GUIDE.md) for source paths, compiler and RTSS depen
 `./build.ps1` compiles console/tray into ignored `outputs/DisplayController`.
 `./test-recovery.ps1` runs isolated checks using synthetic configurations and
 process-local test variables; it does not call the live display/HDR/RTSS APIs or
-write controller state. The latest source pass has 86 checks passing and both
-application builds compiling; no new application binary has been launched/deployed.
+write controller state. The latest source pass has 98 checks passing and both
+application builds compiling. The build is deployed for attended manual testing.
 
 The original September/October deployed setup passed its historical staged tests;
 that is not verification of this new monitor source. The dated baseline remains in

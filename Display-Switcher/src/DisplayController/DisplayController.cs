@@ -870,6 +870,9 @@ namespace GamingDisplayController
         public NativeMethods.DISPLAYCONFIG_MODE_INFO[] Modes;
         public string Identity;
         public bool Hdr;
+        // Read-only vendor confirmation when NVIDIA reports CCD identity scaling
+        // for a smaller desktop inside its native scanout (observed with DSC).
+        public uint? NvidiaScaling;
 
         public ActiveDisplayConfiguration Clone()
         {
@@ -877,7 +880,7 @@ namespace GamingDisplayController
             {
                 Paths = (NativeMethods.DISPLAYCONFIG_PATH_INFO[])Paths.Clone(),
                 Modes = (NativeMethods.DISPLAYCONFIG_MODE_INFO[])Modes.Clone(),
-                Identity = Identity, Hdr = Hdr
+                Identity = Identity, Hdr = Hdr, NvidiaScaling = NvidiaScaling
             };
         }
 
@@ -917,8 +920,25 @@ namespace GamingDisplayController
                 signal.activeSize.cx != 5120 || signal.activeSize.cy != 2160 || !Is165Hz(signal.vSyncFreq) ||
                 !Is165Hz(Paths[0].targetInfo.refreshRate))
                 throw new InvalidOperationException("Expected AW3926QW native 5K2K/165 signal and the requested desktop size.");
-            if (!requireNativeSource && Paths[0].targetInfo.scaling != NativeMethods.DISPLAYCONFIG_SCALING_CENTERED)
+            if (!requireNativeSource && (source.position.x != 0 || source.position.y != 0 ||
+                Paths[0].targetInfo.rotation != 1 || !HasConfirmedCentering()))
                 throw new InvalidOperationException("Driver did not retain unscaled centered 4K output; refusing stretched 4K.");
+        }
+
+        private bool HasConfirmedCentering()
+        {
+            return Paths[0].targetInfo.scaling == NativeMethods.DISPLAYCONFIG_SCALING_CENTERED ||
+                (Paths[0].targetInfo.scaling == 1 && NvidiaScaling == NvidiaDisplayQuery.GpuCentered);
+        }
+
+        private bool HasSameScaling(ActiveDisplayConfiguration other)
+        {
+            if (Paths[0].targetInfo.scaling == other.Paths[0].targetInfo.scaling)
+                return NvidiaScaling == other.NvidiaScaling;
+            // Only the exact 4K/native/HDR geometry may equate CCD CENTERED with
+            // NVIDIA-confirmed GPU no-scaling. Never normalize arbitrary modes.
+            try { RequireCentered4K(false); other.RequireCentered4K(false); return true; }
+            catch (InvalidOperationException) { return false; }
         }
 
         internal ActiveDisplayConfiguration CreateCentered4K()
@@ -936,7 +956,20 @@ namespace GamingDisplayController
             NativeMethods.DISPLAYCONFIG_PATH_INFO path = centered.Paths[0];
             path.targetInfo.scaling = NativeMethods.DISPLAYCONFIG_SCALING_CENTERED;
             centered.Paths[0] = path;
+            centered.NvidiaScaling = null;
             return centered;
+        }
+
+        internal ActiveDisplayConfiguration CreateRestoreRequest()
+        {
+            ActiveDisplayConfiguration request = Clone();
+            if (Paths[0].targetInfo.scaling == 1 && NvidiaScaling == NvidiaDisplayQuery.GpuCentered)
+            {
+                RequireCentered4K(false);
+                request.Paths[0].targetInfo.scaling = NativeMethods.DISPLAYCONFIG_SCALING_CENTERED;
+                request.NvidiaScaling = null;
+            }
+            return request;
         }
 
         internal bool HasSamePresentation(ActiveDisplayConfiguration other)
@@ -951,11 +984,136 @@ namespace GamingDisplayController
                 a.targetInfo.adapterId.Equals(b.targetInfo.adapterId) && a.targetInfo.id == b.targetInfo.id &&
                 a.targetInfo.outputTechnology == b.targetInfo.outputTechnology &&
                 (a.flags & NativeMethods.DISPLAYCONFIG_PATH_BOOST_REFRESH_RATE) == (b.flags & NativeMethods.DISPLAYCONFIG_PATH_BOOST_REFRESH_RATE) &&
-                a.targetInfo.rotation == b.targetInfo.rotation && a.targetInfo.scaling == b.targetInfo.scaling &&
+                a.targetInfo.rotation == b.targetInfo.rotation && HasSameScaling(other) &&
                 a.targetInfo.refreshRate.Equals(b.targetInfo.refreshRate) &&
                 a.targetInfo.scanLineOrdering == b.targetInfo.scanLineOrdering &&
                 Modes[source].sourceMode.Equals(other.Modes[otherSource].sourceMode) &&
                 Modes[target].targetMode.targetVideoSignalInfo.Equals(other.Modes[otherTarget].targetMode.targetVideoSignalInfo);
+        }
+    }
+
+    // Read-only subset of NVIDIA's public NVAPI. No vendor display settings are written.
+    // ABI references: NVIDIA/nvapi nvapi.h and nvapi_interface.h (MIT licensed).
+    internal static class NvidiaDisplayQuery
+    {
+        public const uint GpuCentered = 3; // NV_SCALING_GPU_SCANOUT_TO_NATIVE
+#if RTSS_X86
+        private const string Library = "nvapi.dll";
+#else
+        private const string Library = "nvapi64.dll";
+#endif
+        [DllImport(Library, EntryPoint = "nvapi_QueryInterface", CallingConvention = CallingConvention.Cdecl)]
+        private static extern IntPtr QueryInterface(uint id);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int Initialize();
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        private delegate int GetDisplayId(string name, out uint id);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int GetConfig(ref uint count, IntPtr paths);
+
+        [StructLayout(LayoutKind.Sequential)] internal struct PathInfo
+        {
+            public uint Version, SourceId, TargetCount;
+            public IntPtr Targets, Source;
+            public uint Flags;
+            public IntPtr Adapter;
+        }
+        [StructLayout(LayoutKind.Sequential)] internal struct TargetInfo
+        {
+            public uint DisplayId;
+            public IntPtr Details;
+            public uint TargetId;
+        }
+        // NV_TIMING is 96 bytes. Its unused fields are retained as zeroed padding.
+        [StructLayout(LayoutKind.Explicit, Size = 128)] internal struct AdvancedTargetInfo
+        {
+            [FieldOffset(0)] public uint Version;
+            [FieldOffset(4)] public uint Rotation;
+            [FieldOffset(8)] public uint Scaling;
+        }
+        private sealed class Functions
+        {
+            public readonly GetDisplayId DisplayId;
+            public readonly GetConfig Config;
+            public Functions()
+            {
+                Check(Function<Initialize>(0x0150e828)(), "initialize");
+                DisplayId = Function<GetDisplayId>(0xae457190);
+                Config = Function<GetConfig>(0x11abccf8);
+            }
+        }
+        private static readonly Lazy<Functions> Api = new Lazy<Functions>(delegate { return new Functions(); });
+        private static T Function<T>(uint id) where T : class
+        {
+            IntPtr function = QueryInterface(id);
+            if (function == IntPtr.Zero) throw new InvalidOperationException("Required NVIDIA query is unavailable.");
+            return (T)(object)Marshal.GetDelegateForFunctionPointer(function, typeof(T));
+        }
+        private static void Check(int code, string operation)
+        {
+            if (code != 0) throw new InvalidOperationException("NVIDIA " + operation + " query failed: " + code);
+        }
+        public static uint GetScaling(string gdiName)
+        {
+            try { return ReadScaling(gdiName); }
+            catch (DllNotFoundException ex) { throw new InvalidOperationException("NVIDIA scaling verification is unavailable.", ex); }
+            catch (EntryPointNotFoundException ex) { throw new InvalidOperationException("NVIDIA scaling query is unavailable.", ex); }
+            catch (BadImageFormatException ex) { throw new InvalidOperationException("NVIDIA API architecture mismatch.", ex); }
+        }
+        private static uint ReadScaling(string gdiName)
+        {
+            if (string.IsNullOrEmpty(gdiName)) throw new InvalidOperationException("NVIDIA scaling query requires an active GDI display.");
+            Functions api = Api.Value;
+            uint displayId;
+            Check(api.DisplayId(gdiName, out displayId), "display identity");
+            uint count = 0;
+            Check(api.Config(ref count, IntPtr.Zero), "path count");
+            if (count == 0 || count > 64) throw new InvalidOperationException("Unexpected NVIDIA path count.");
+            uint capacity = count;
+            int pathSize = Marshal.SizeOf(typeof(PathInfo)), targetSize = Marshal.SizeOf(typeof(TargetInfo));
+            List<IntPtr> allocations = new List<IntPtr>();
+            try
+            {
+                IntPtr paths = Marshal.AllocHGlobal(pathSize * (int)capacity);
+                allocations.Add(paths);
+                for (int i = 0; i < capacity; i++)
+                    Marshal.StructureToPtr(new PathInfo { Version = (uint)pathSize | (2U << 16) }, IntPtr.Add(paths, i * pathSize), false);
+                Check(api.Config(ref count, paths), "path sizes");
+                if (count > capacity) throw new InvalidOperationException("NVIDIA topology changed during query.");
+                uint[] targetCapacities = new uint[count];
+                for (int i = 0; i < count; i++)
+                {
+                    IntPtr slot = IntPtr.Add(paths, i * pathSize);
+                    PathInfo path = (PathInfo)Marshal.PtrToStructure(slot, typeof(PathInfo));
+                    if (path.TargetCount > 64) throw new InvalidOperationException("Unexpected NVIDIA target count.");
+                    targetCapacities[i] = path.TargetCount;
+                    path.Source = IntPtr.Zero;
+                    path.Targets = Marshal.AllocHGlobal(targetSize * (int)path.TargetCount);
+                    allocations.Add(path.Targets);
+                    for (int j = 0; j < path.TargetCount; j++)
+                    {
+                        IntPtr details = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(AdvancedTargetInfo)));
+                        allocations.Add(details);
+                        Marshal.StructureToPtr(new AdvancedTargetInfo { Version = 128U | (1U << 16) }, details, false);
+                        Marshal.StructureToPtr(new TargetInfo { Details = details }, IntPtr.Add(path.Targets, j * targetSize), false);
+                    }
+                    Marshal.StructureToPtr(path, slot, false);
+                }
+                uint populatedCount = count;
+                Check(api.Config(ref count, paths), "scaling");
+                if (count > populatedCount) throw new InvalidOperationException("NVIDIA topology changed during scaling query.");
+                for (int i = 0; i < count; i++)
+                {
+                    PathInfo path = (PathInfo)Marshal.PtrToStructure(IntPtr.Add(paths, i * pathSize), typeof(PathInfo));
+                    if (path.TargetCount > targetCapacities[i]) throw new InvalidOperationException("NVIDIA target count changed during query.");
+                    for (int j = 0; j < path.TargetCount; j++)
+                    {
+                        TargetInfo target = (TargetInfo)Marshal.PtrToStructure(IntPtr.Add(path.Targets, j * targetSize), typeof(TargetInfo));
+                        if ((path.Flags & 1) == 0 && target.DisplayId == displayId && target.Details != IntPtr.Zero)
+                            return ((AdvancedTargetInfo)Marshal.PtrToStructure(target.Details, typeof(AdvancedTargetInfo))).Scaling;
+                    }
+                }
+                throw new InvalidOperationException("Active NVIDIA display was not found for scaling verification.");
+            }
+            finally { foreach (IntPtr allocation in allocations) Marshal.FreeHGlobal(allocation); }
         }
     }
 
@@ -986,6 +1144,9 @@ namespace GamingDisplayController
                 if (!target.HdrQuerySucceeded) throw new InvalidOperationException("Could not capture HDR state for rollback.");
                 result.Identity = target.Identity;
                 result.Hdr = target.HdrEnabled;
+                if (result.Identity == "Alienware" && modes[sourceIndex].sourceMode.width == 3840 &&
+                    modes[sourceIndex].sourceMode.height == 2160 && paths[0].targetInfo.scaling == 1)
+                    result.NvidiaScaling = NvidiaDisplayQuery.GetScaling(GetSourceName(paths[0].sourceInfo.adapterId, paths[0].sourceInfo.id));
                 return result;
             }
             throw new InvalidOperationException("Display topology did not settle while capturing a rollback snapshot.");
@@ -1049,7 +1210,7 @@ namespace GamingDisplayController
 
         public static void RestoreConfiguration(ActiveDisplayConfiguration original)
         {
-            ApplyConfiguration(original);
+            ApplyConfiguration(original.CreateRestoreRequest());
             SetHdr(original.Identity, original.Hdr);
             WaitForConfiguration(CaptureActiveConfiguration, delegate(ActiveDisplayConfiguration actual)
             {

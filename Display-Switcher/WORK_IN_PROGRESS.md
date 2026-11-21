@@ -1,4 +1,16 @@
-# AW3926QW source checkpoint — ready for attended testing
+# AW3926QW checkpoint — attended testing in progress
+
+## Current status — 2026-11-21
+
+The user is home and authorized deployment/testing. See
+[attended results](docs/AW3926QW-ATTENDED-RESULTS.md) for current state and remaining work.
+Both EXEs are deployed; the tray/watchdog remains stopped during manual tests.
+An NVIDIA readback compatibility fix passes 98 isolated checks. Native -> centered 4K
+-> native 5120x2160/165/HDR passed controller checks and user visual confirmation.
+The source-only checkpoint below is historical; its no-deployment statements describe
+the earlier work, not the current installation. TV/330/streaming/startup/game tests remain.
+
+## Earlier source-only checkpoint
 
 Source development resumed after the earlier pause. Changes are on
 projects/aw3926qw-profiles, based on d0b7553. No deployment, application launch,

@@ -95,6 +95,7 @@ namespace GamingDisplayController
             path.targetInfo.targetAvailable = true;
             path.targetInfo.refreshRate = new NativeMethods.DISPLAYCONFIG_RATIONAL { Numerator = 16499, Denominator = 100 };
             path.targetInfo.scaling = 1;
+            path.targetInfo.rotation = 1;
             NativeMethods.DISPLAYCONFIG_MODE_INFO source = new NativeMethods.DISPLAYCONFIG_MODE_INFO();
             source.infoType = 1; source.id = 1; source.adapterId = adapter;
             source.sourceMode.width = 5120; source.sourceMode.height = 2160; source.sourceMode.pixelFormat = 4;
@@ -117,6 +118,34 @@ namespace GamingDisplayController
             ActiveDisplayConfiguration original = NativeSnapshot();
             ActiveDisplayConfiguration centered = original.CreateCentered4K();
             centered.RequireCentered4K(false);
+            Assert(Marshal.SizeOf(typeof(NvidiaDisplayQuery.PathInfo)) == (IntPtr.Size == 4 ? 28 : 48), "NVIDIA path ABI mismatch.");
+            Assert(Marshal.SizeOf(typeof(NvidiaDisplayQuery.TargetInfo)) == (IntPtr.Size == 4 ? 12 : 24), "NVIDIA target ABI mismatch.");
+            Assert(Marshal.SizeOf(typeof(NvidiaDisplayQuery.AdvancedTargetInfo)) == 128 &&
+                Marshal.OffsetOf(typeof(NvidiaDisplayQuery.AdvancedTargetInfo), "Scaling").ToInt32() == 8, "NVIDIA scaling ABI mismatch.");
+            ActiveDisplayConfiguration nvidia = centered.Clone();
+            nvidia.Paths[0].targetInfo.scaling = 1;
+            Reject(delegate { nvidia.RequireCentered4K(false); }, "Unconfirmed CCD identity accepted for smaller desktop.");
+            nvidia.NvidiaScaling = 2;
+            Reject(delegate { nvidia.RequireCentered4K(false); }, "NVIDIA GPU full-screen stretching accepted.");
+            nvidia.NvidiaScaling = NvidiaDisplayQuery.GpuCentered;
+            nvidia.RequireCentered4K(false);
+            Assert(centered.HasSamePresentation(nvidia) && nvidia.HasSamePresentation(centered), "NVIDIA-confirmed centering rejected.");
+            Assert(Controller.SnapshotMatchesState(nvidia, new ControllerState { Mode = DisplayMode.Alienware4K }), "NVIDIA-centered state rejected.");
+            ActiveDisplayConfiguration restoreRequest = nvidia.CreateRestoreRequest();
+            Assert(restoreRequest.Paths[0].targetInfo.scaling == 2 && restoreRequest.NvidiaScaling == null &&
+                restoreRequest.HasSamePresentation(nvidia) && nvidia.Paths[0].targetInfo.scaling == 1,
+                "NVIDIA rollback request was not normalized without mutating original.");
+            nvidia.Paths[0].targetInfo.scaling = 3;
+            Reject(delegate { nvidia.RequireCentered4K(false); }, "CCD stretching accepted despite NVIDIA setting.");
+            nvidia.Paths[0].targetInfo.scaling = 1;
+            nvidia.Modes[0].sourceMode.position.x = 1;
+            Reject(delegate { nvidia.RequireCentered4K(false); }, "Offset NVIDIA desktop accepted.");
+            nvidia.Modes[0].sourceMode.position.x = 0;
+            nvidia.Paths[0].targetInfo.rotation = 2;
+            Reject(delegate { nvidia.RequireCentered4K(false); }, "Rotated NVIDIA desktop accepted.");
+            nvidia.Paths[0].targetInfo.rotation = 1;
+            nvidia.Modes[1].targetMode.targetVideoSignalInfo.pixelRate++;
+            Assert(!centered.HasSamePresentation(nvidia), "NVIDIA centering bypassed timing verification.");
             Assert(centered.Modes[0].sourceMode.width == 3840 && centered.Modes[0].sourceMode.height == 2160 && centered.Hdr,
                 "Centered desktop or HDR metadata incorrect.");
             Assert(centered.Modes[1].Equals(original.Modes[1]) && centered.Paths[0].targetInfo.refreshRate.Equals(original.Paths[0].targetInfo.refreshRate),

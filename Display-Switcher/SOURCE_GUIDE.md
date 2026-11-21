@@ -30,9 +30,19 @@ Installed RTSS is required for caps, VDD for virtual output, and Sunshine for st
 Do not run the old executable against a different monitor's IDs without adapting the source.
 
 The current branch's source adds AW3926QW native, manual 330 Hz and centered-4K profiles.
-It is compiled/offline-checked only, not deployed or verified on hardware. See
+It is deployed for attended testing; complete hardware validation remains pending. See
 [WORK_IN_PROGRESS.md](WORK_IN_PROGRESS.md) and [the attended test plan](docs/AW3926QW-TEST-PLAN.md).
-[BASELINE_BACKUP.md](BASELINE_BACKUP.md) describes the unchanged old installed baseline.
+[BASELINE_BACKUP.md](BASELINE_BACKUP.md) describes the historical installed baseline.
+See [attended results](docs/AW3926QW-ATTENDED-RESULTS.md) for the current installation.
+
+The NVIDIA identity-scaling compatibility check uses read-only public NVAPI queries
+from the installed driver (`nvapi.dll` for x86). No SDK package or new driver is required.
+It resolves the active GDI display to a vendor display ID and confirms scaling mode 3,
+GPU-centered/no-scaling, via GetDisplayConfig. It never calls NVAPI display setters.
+ABI references are NVIDIA's MIT-licensed [header](https://github.com/NVIDIA/nvapi/blob/main/nvapi.h)
+and [interface IDs](https://github.com/NVIDIA/nvapi/blob/main/nvapi_interface.h).
+The experimental scanout-rectangle query exposed only part of the scanout;
+it is not used by production verification.
 The supplied raster artwork was AI-assisted; the ICO conversion source does not reproduce the
 original image-generation model. It reuses the preserved image asset.
 
