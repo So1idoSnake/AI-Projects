@@ -76,7 +76,8 @@ Dell built-in 4K mode or NVIDIA scaling-setting change was needed for this resul
 - After all manual round trips passed, verified no existing controller process and
   correct saved/actual native state, then started one updated tray at09:01:54.
 - After8seconds it remained running, with native5120x2160/165/HDR, TV/VDD inactive,
-  and no additional transitions logged. Icon/menu visibility awaits user confirmation.
+  and no additional transitions logged. User screenshot confirmed the icon/menu
+  and native,330 and centered4K entries are present.
 - The active-watchdog OSD interaction still needs validation: a hardware EDID change
   can restore multiple outputs before the user reapplies a profile. Existing recovery
   could then try the previously selected profile while its timing is unavailable.
@@ -85,10 +86,21 @@ Dell built-in 4K mode or NVIDIA scaling-setting change was needed for this resul
   with one tray instance and no additional controller transitions. This verifies
   Windows HDR state; the OSD preset is user-reported, not programmatically queried.
 
+## Passed: tray native -> centered4K -> native
+
+- User selected centered4K from the tray; transition verified at09:04:41.
+  User confirmed a correct centered image. Read-only checks found desktop3840x2160,
+  unchanged native5120x2160/165 signal, HDRon, NVIDIA GPU-centered/no-scaling3,
+  RTSS global cap162, and TV/VDD inactive.
+- User selected native from the tray; transition verified at09:05:56.
+  User confirmed full ultrawide. Read-only checks found source and signal5120x2160/165,
+  HDRon, source position0,0, identity scaling, RTSS global cap162, and TV/VDD inactive.
+- One tray instance remained running. No new transition errors appeared during this round trip.
+
 ## Remaining
 
 - 4K reapply and exact rollback from a previously selected 4K state on a failed transition.
-- Tray menu, hardware-mode interaction, topology/watchdog behavior, reboot startup.
+- Tray hardware-mode interaction, topology/watchdog behavior, reboot startup.
 - Actual game cap/HDR/VRR checks; no measured latency or DSC-health claim is made.
 - Real handheld and Xbox streaming regressions after physical profiles are stable.
 - Dolby Vision disablement is user intent; HDR-on verification does not prove DV is off.
