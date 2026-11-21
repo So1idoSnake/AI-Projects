@@ -99,11 +99,14 @@ namespace GamingDisplayController
             }
         }
 
-        private static DisplayMode ParseMode(string value)
+        internal static DisplayMode ParseMode(string value)
         {
             string normalized = value.Trim().ToLowerInvariant();
             if (normalized == "tv" || normalized == "lg" || normalized == "cx" || normalized == "c2") return DisplayMode.Tv;
             if (normalized == "alienware" || normalized == "aw" || normalized == "monitor") return DisplayMode.Alienware;
+            if (normalized == "alienware-native" || normalized == "monitor-native" || normalized == "monitor-5k2k") return DisplayMode.Alienware;
+            if (normalized == "alienware-330" || normalized == "monitor-330") return DisplayMode.Alienware330;
+            if (normalized == "alienware-4k" || normalized == "monitor-4k") return DisplayMode.Alienware4K;
             if (normalized == "vdd" || normalized == "virtual") return DisplayMode.Vdd;
             throw new ArgumentException("Unknown display mode: " + value);
         }
@@ -115,7 +118,8 @@ namespace GamingDisplayController
             Console.WriteLine("  validate");
             Console.WriteLine("  set-cap <fps>");
             Console.WriteLine("  validate-stream-request");
-            Console.WriteLine("  set tv|alienware|vdd");
+            Console.WriteLine("  set tv|alienware|alienware-330|alienware-4k|vdd");
+            Console.WriteLine("  alienware: native 5K2K/165; alienware-330: manual 1080p UW/330; alienware-4k: centered 4K/165");
             Console.WriteLine("  stream-start");
             Console.WriteLine("  stream-end");
             Console.WriteLine("  restore-lg");
@@ -131,7 +135,35 @@ namespace GamingDisplayController
         Alienware,
         Vdd,
         Stream,
-        Transition
+        Transition,
+        Alienware330,
+        Alienware4K
+    }
+
+    internal sealed class MonitorProfile
+    {
+        public readonly int Width;
+        public readonly int Height;
+        public readonly int Refresh;
+        public readonly int Limit;
+
+        private MonitorProfile(int width, int height, int refresh, int limit)
+        {
+            Width = width; Height = height; Refresh = refresh; Limit = limit;
+        }
+
+        public static bool IsMonitor(DisplayMode mode)
+        {
+            return mode == DisplayMode.Alienware || mode == DisplayMode.Alienware330 || mode == DisplayMode.Alienware4K;
+        }
+
+        public static MonitorProfile Get(DisplayMode mode)
+        {
+            if (mode == DisplayMode.Alienware) return new MonitorProfile(5120, 2160, 165, 162);
+            if (mode == DisplayMode.Alienware330) return new MonitorProfile(2560, 1080, 330, 327);
+            if (mode == DisplayMode.Alienware4K) return new MonitorProfile(3840, 2160, 165, 162);
+            throw new ArgumentException("Not an Alienware profile: " + mode);
+        }
     }
 
     internal sealed class ControllerState
@@ -168,7 +200,13 @@ namespace GamingDisplayController
             string path = Paths.StateFile;
             if (!File.Exists(path)) return state;
 
-            foreach (string rawLine in File.ReadAllLines(path))
+            return Parse(File.ReadAllLines(path));
+        }
+
+        internal static ControllerState Parse(IEnumerable<string> lines)
+        {
+            ControllerState state = new ControllerState();
+            foreach (string rawLine in lines)
             {
                 int separator = rawLine.IndexOf('=');
                 if (separator <= 0) continue;
@@ -279,7 +317,8 @@ namespace GamingDisplayController
             {
                 string upper = (DevicePath ?? "").ToUpperInvariant();
                 if (upper.Contains("DISPLAY#MTT1337")) return "VDD";
-                if (upper.Contains("DISPLAY#DELA1E4")) return "Alienware";
+                // AW3926QW only: do not send new timings to the retired AW3423DW.
+                if (upper.Contains("DISPLAY#DELA2F9")) return "Alienware";
                 // The loft CX exposes its native LG/GSM EDID. The office C2 is
                 // connected through a Samsung HDMI 2.1 soundbar, which owns the
                 // downstream EDID and is deliberately recognized by its exact ID.
@@ -309,10 +348,6 @@ namespace GamingDisplayController
         private const int TvHeight = 2160;
         private const int TvRefresh = 120;
         private const int TvLimit = 117;
-        private const int AwWidth = 3440;
-        private const int AwHeight = 1440;
-        private const int AwRefresh = 175;
-        private const int AwLimit = 172;
 
         public static int RunLocked(Func<int> action)
         {
@@ -453,7 +488,11 @@ namespace GamingDisplayController
                 case DisplayMode.Tv:
                     identity = "TV"; width = TvWidth; height = TvHeight; refresh = TvRefresh; limit = TvLimit; hdr = true; break;
                 case DisplayMode.Alienware:
-                    identity = "Alienware"; width = AwWidth; height = AwHeight; refresh = AwRefresh; limit = AwLimit; hdr = true; break;
+                case DisplayMode.Alienware330:
+                case DisplayMode.Alienware4K:
+                    MonitorProfile profile = MonitorProfile.Get(mode);
+                    identity = "Alienware"; width = profile.Width; height = profile.Height;
+                    refresh = profile.Refresh; limit = profile.Limit; hdr = true; break;
                 case DisplayMode.Vdd:
                     identity = "VDD"; width = 1920; height = 1080; refresh = 120; limit = 120; hdr = false; break;
                 default:
@@ -466,6 +505,24 @@ namespace GamingDisplayController
         private static int ApplyProfile(DisplayMode finalMode, string identity, int width, int height, int refresh, bool hdr, int limit, bool persist, string reason)
         {
             ControllerState original = ControllerState.Load();
+            // Source/target separation and scaling need an exact snapshot for rollback.
+            // Capture before persisting Transition or making any display changes.
+            ActiveDisplayConfiguration originalConfiguration = null;
+            if (finalMode == DisplayMode.Alienware4K || original.Mode == DisplayMode.Alienware4K)
+            {
+                try { originalConfiguration = DisplayManager.CaptureActiveConfiguration(); }
+                catch (Exception snapshotError)
+                {
+                    Logger.Error("Could not capture scaling rollback snapshot", snapshotError);
+                    if (finalMode == DisplayMode.Alienware4K)
+                    {
+                        Console.Error.WriteLine("Centered 4K requires a valid rollback snapshot; no transition was started.");
+                        return 10;
+                    }
+                    // A disappeared optional monitor must not prevent TV/VDD recovery.
+                    // Its profile remains the best-effort rollback if a snapshot is unavailable.
+                }
+            }
             ControllerState transition = original.Clone();
             transition.Mode = DisplayMode.Transition;
             transition.TransitionDestination = finalMode;
@@ -475,9 +532,17 @@ namespace GamingDisplayController
             try
             {
                 DisplayManager.ActivateOnly(identity);
-                DisplayManager.SetActiveMode(identity, width, height, refresh);
+                if (MonitorProfile.IsMonitor(finalMode))
+                    DisplayManager.RequireAdvertisedMode(identity,
+                        finalMode == DisplayMode.Alienware4K ? 5120 : width, height, refresh);
+                DisplayManager.SetActiveMode(identity, finalMode == DisplayMode.Alienware4K ? 5120 : width, height, refresh);
                 DisplayManager.SetHdr(identity, hdr);
+                ActiveDisplayConfiguration centeredConfiguration = null;
+                if (finalMode == DisplayMode.Alienware4K)
+                    centeredConfiguration = DisplayManager.ApplyCentered4K();
                 DisplayManager.Verify(identity, width, height, refresh, hdr, TimeSpan.FromSeconds(6));
+                if (finalMode == DisplayMode.Alienware4K)
+                    DisplayManager.VerifyCentered4K(centeredConfiguration);
 
                 try
                 {
@@ -507,13 +572,13 @@ namespace GamingDisplayController
             catch (Exception ex)
             {
                 Logger.Error("Transition failed: " + finalMode, ex);
-                BestEffortRestore(original);
+                BestEffortRestore(original, originalConfiguration);
                 Console.Error.WriteLine("Failed to apply " + finalMode + ": " + ex.Message);
                 return 10;
             }
         }
 
-        private static void BestEffortRestore(ControllerState original)
+        private static void BestEffortRestore(ControllerState original, ActiveDisplayConfiguration originalConfiguration)
         {
             try
             {
@@ -524,9 +589,11 @@ namespace GamingDisplayController
                 int limit;
                 bool hdr;
 
-                if (original.Mode == DisplayMode.Alienware)
+                if (MonitorProfile.IsMonitor(original.Mode))
                 {
-                    identity = "Alienware"; width = AwWidth; height = AwHeight; refresh = AwRefresh; limit = AwLimit; hdr = true;
+                    MonitorProfile profile = MonitorProfile.Get(original.Mode);
+                    identity = "Alienware"; width = profile.Width; height = profile.Height;
+                    refresh = profile.Refresh; limit = profile.Limit; hdr = true;
                 }
                 else if (original.Mode == DisplayMode.Vdd || original.Mode == DisplayMode.Stream)
                 {
@@ -542,10 +609,17 @@ namespace GamingDisplayController
                     identity = "TV"; width = TvWidth; height = TvHeight; refresh = TvRefresh; limit = TvLimit; hdr = true;
                 }
 
-                DisplayManager.ActivateOnly(identity);
-                DisplayManager.SetActiveMode(identity, width, height, refresh);
-                DisplayManager.SetHdr(identity, hdr);
-                DisplayManager.Verify(identity, width, height, refresh, hdr, TimeSpan.FromSeconds(6));
+                if (originalConfiguration != null)
+                    DisplayManager.RestoreConfiguration(originalConfiguration);
+                else
+                {
+                    DisplayManager.ActivateOnly(identity);
+                    DisplayManager.SetActiveMode(identity, original.Mode == DisplayMode.Alienware4K ? 5120 : width, height, refresh);
+                    DisplayManager.SetHdr(identity, hdr);
+                    if (original.Mode == DisplayMode.Alienware4K) DisplayManager.ApplyCentered4K();
+                    DisplayManager.Verify(identity, width, height, refresh, hdr, TimeSpan.FromSeconds(6));
+                    if (original.Mode == DisplayMode.Alienware4K) DisplayManager.VerifyCentered4K();
+                }
                 try { RtssManager.SetLimit(limit); }
                 catch (Exception capError) { Logger.Error("RTSS rollback cap failed", capError); }
                 original.Save();
@@ -676,10 +750,10 @@ namespace GamingDisplayController
             return Reapply();
         }
 
-        private static string DesiredIdentity(DisplayMode mode)
+        internal static string DesiredIdentity(DisplayMode mode)
         {
             if (mode == DisplayMode.Tv) return "TV";
-            if (mode == DisplayMode.Alienware) return "Alienware";
+            if (MonitorProfile.IsMonitor(mode)) return "Alienware";
             if (mode == DisplayMode.Vdd || mode == DisplayMode.Stream) return "VDD";
             return "";
         }
@@ -737,8 +811,190 @@ namespace GamingDisplayController
         }
     }
 
+    internal sealed class ActiveDisplayConfiguration
+    {
+        public NativeMethods.DISPLAYCONFIG_PATH_INFO[] Paths;
+        public NativeMethods.DISPLAYCONFIG_MODE_INFO[] Modes;
+        public string Identity;
+        public bool Hdr;
+
+        public ActiveDisplayConfiguration Clone()
+        {
+            return new ActiveDisplayConfiguration
+            {
+                Paths = (NativeMethods.DISPLAYCONFIG_PATH_INFO[])Paths.Clone(),
+                Modes = (NativeMethods.DISPLAYCONFIG_MODE_INFO[])Modes.Clone(),
+                Identity = Identity, Hdr = Hdr
+            };
+        }
+
+        internal void GetModeIndexes(out int sourceIndex, out int targetIndex)
+        {
+            if (Paths == null || Paths.Length != 1 || Modes == null)
+                throw new InvalidOperationException("Expected one active display configuration.");
+            NativeMethods.DISPLAYCONFIG_PATH_INFO path = Paths[0];
+            if ((path.flags & NativeMethods.DISPLAYCONFIG_PATH_ACTIVE) == 0 || !path.targetInfo.targetAvailable ||
+                (path.flags & NativeMethods.DISPLAYCONFIG_PATH_SUPPORT_VIRTUAL_MODE) != 0)
+                throw new InvalidOperationException("Expected an available, active, non-virtual-aware path.");
+            if (path.sourceInfo.modeInfoIdx >= Modes.Length || path.targetInfo.modeInfoIdx >= Modes.Length)
+                throw new InvalidOperationException("Display configuration contains invalid mode indexes.");
+            sourceIndex = (int)path.sourceInfo.modeInfoIdx;
+            targetIndex = (int)path.targetInfo.modeInfoIdx;
+            NativeMethods.DISPLAYCONFIG_MODE_INFO source = Modes[sourceIndex];
+            NativeMethods.DISPLAYCONFIG_MODE_INFO target = Modes[targetIndex];
+            if (source.infoType != 1 || target.infoType != 2 || source.id != path.sourceInfo.id ||
+                target.id != path.targetInfo.id || !source.adapterId.Equals(path.sourceInfo.adapterId) ||
+                !target.adapterId.Equals(path.targetInfo.adapterId))
+                throw new InvalidOperationException("Mode entries do not belong to the active path.");
+        }
+
+        internal static bool Is165Hz(NativeMethods.DISPLAYCONFIG_RATIONAL rate)
+        {
+            return rate.Denominator != 0 && Math.Abs((double)rate.Numerator / rate.Denominator - 165) <= 1;
+        }
+
+        internal void RequireCentered4K(bool requireNativeSource)
+        {
+            int sourceIndex, targetIndex;
+            GetModeIndexes(out sourceIndex, out targetIndex);
+            NativeMethods.DISPLAYCONFIG_SOURCE_MODE source = Modes[sourceIndex].sourceMode;
+            NativeMethods.DISPLAYCONFIG_VIDEO_SIGNAL_INFO signal = Modes[targetIndex].targetMode.targetVideoSignalInfo;
+            uint expectedWidth = requireNativeSource ? 5120U : 3840U;
+            if (Identity != "Alienware" || source.width != expectedWidth || source.height != 2160 ||
+                signal.activeSize.cx != 5120 || signal.activeSize.cy != 2160 || !Is165Hz(signal.vSyncFreq) ||
+                !Is165Hz(Paths[0].targetInfo.refreshRate))
+                throw new InvalidOperationException("Expected AW3926QW native 5K2K/165 signal and the requested desktop size.");
+            if (!requireNativeSource && Paths[0].targetInfo.scaling != NativeMethods.DISPLAYCONFIG_SCALING_CENTERED)
+                throw new InvalidOperationException("Driver did not retain unscaled centered 4K output; refusing stretched 4K.");
+        }
+
+        internal ActiveDisplayConfiguration CreateCentered4K()
+        {
+            RequireCentered4K(true);
+            ActiveDisplayConfiguration centered = Clone();
+            int sourceIndex, targetIndex;
+            centered.GetModeIndexes(out sourceIndex, out targetIndex);
+            NativeMethods.DISPLAYCONFIG_MODE_INFO source = centered.Modes[sourceIndex];
+            source.sourceMode.width = 3840;
+            source.sourceMode.height = 2160;
+            source.sourceMode.position.x = 0;
+            source.sourceMode.position.y = 0;
+            centered.Modes[sourceIndex] = source;
+            NativeMethods.DISPLAYCONFIG_PATH_INFO path = centered.Paths[0];
+            path.targetInfo.scaling = NativeMethods.DISPLAYCONFIG_SCALING_CENTERED;
+            centered.Paths[0] = path;
+            return centered;
+        }
+
+        internal bool HasSamePresentation(ActiveDisplayConfiguration other)
+        {
+            int source, target, otherSource, otherTarget;
+            GetModeIndexes(out source, out target);
+            other.GetModeIndexes(out otherSource, out otherTarget);
+            NativeMethods.DISPLAYCONFIG_PATH_INFO a = Paths[0];
+            NativeMethods.DISPLAYCONFIG_PATH_INFO b = other.Paths[0];
+            return Identity == other.Identity && Hdr == other.Hdr &&
+                a.sourceInfo.adapterId.Equals(b.sourceInfo.adapterId) && a.sourceInfo.id == b.sourceInfo.id &&
+                a.targetInfo.adapterId.Equals(b.targetInfo.adapterId) && a.targetInfo.id == b.targetInfo.id &&
+                a.targetInfo.rotation == b.targetInfo.rotation && a.targetInfo.scaling == b.targetInfo.scaling &&
+                a.targetInfo.refreshRate.Equals(b.targetInfo.refreshRate) &&
+                a.targetInfo.scanLineOrdering == b.targetInfo.scanLineOrdering &&
+                Modes[source].sourceMode.Equals(other.Modes[otherSource].sourceMode) &&
+                Modes[target].targetMode.targetVideoSignalInfo.Equals(other.Modes[otherTarget].targetMode.targetVideoSignalInfo);
+        }
+    }
+
     internal static class DisplayManager
     {
+        public static ActiveDisplayConfiguration CaptureActiveConfiguration()
+        {
+            // Paths and mode indexes must come from the same query. Omitting virtual awareness
+            // deliberately uses the full 32-bit modeInfoIdx rather than packed 16-bit indexes.
+            for (int attempt = 0; attempt < 3; attempt++)
+            {
+                uint pathCount, modeCount;
+                int code = NativeMethods.GetDisplayConfigBufferSizes(NativeMethods.QDC_ONLY_ACTIVE_PATHS, out pathCount, out modeCount);
+                if (code != 0) throw new Win32Exception(code, "Could not size active display snapshot.");
+                NativeMethods.DISPLAYCONFIG_PATH_INFO[] paths = new NativeMethods.DISPLAYCONFIG_PATH_INFO[pathCount];
+                NativeMethods.DISPLAYCONFIG_MODE_INFO[] modes = new NativeMethods.DISPLAYCONFIG_MODE_INFO[modeCount];
+                code = NativeMethods.QueryDisplayConfig(NativeMethods.QDC_ONLY_ACTIVE_PATHS, ref pathCount, paths, ref modeCount, modes, IntPtr.Zero);
+                if (code == 122) continue; // topology changed between allocation and query
+                if (code != 0) throw new Win32Exception(code, "Could not capture active display configuration.");
+                Array.Resize(ref paths, (int)pathCount);
+                Array.Resize(ref modes, (int)modeCount);
+                ActiveDisplayConfiguration result = new ActiveDisplayConfiguration { Paths = paths, Modes = modes };
+                int sourceIndex, targetIndex;
+                result.GetModeIndexes(out sourceIndex, out targetIndex);
+                DisplayTarget target = new DisplayTarget { Path = paths[0] };
+                GetTargetName(paths[0].targetInfo.adapterId, paths[0].targetInfo.id, out target.FriendlyName, out target.DevicePath);
+                ReadHdr(target);
+                if (!target.HdrQuerySucceeded) throw new InvalidOperationException("Could not capture HDR state for rollback.");
+                result.Identity = target.Identity;
+                result.Hdr = target.HdrEnabled;
+                return result;
+            }
+            throw new InvalidOperationException("Display topology did not settle while capturing a rollback snapshot.");
+        }
+
+        private static void ApplyConfiguration(ActiveDisplayConfiguration configuration)
+        {
+            int sourceIndex, targetIndex;
+            configuration.GetModeIndexes(out sourceIndex, out targetIndex);
+            uint flags = NativeMethods.SDC_USE_SUPPLIED_DISPLAY_CONFIG;
+            // Do not allow Windows to silently substitute another resolution/timing.
+            int code = NativeMethods.SetDisplayConfigWithModes((uint)configuration.Paths.Length, configuration.Paths,
+                (uint)configuration.Modes.Length, configuration.Modes, flags | NativeMethods.SDC_VALIDATE);
+            if (code != 0) throw new Win32Exception(code, "Driver rejected exact source/target/scaling configuration.");
+            code = NativeMethods.SetDisplayConfigWithModes((uint)configuration.Paths.Length, configuration.Paths,
+                (uint)configuration.Modes.Length, configuration.Modes, flags | NativeMethods.SDC_APPLY | NativeMethods.SDC_SAVE_TO_DATABASE);
+            if (code != 0) throw new Win32Exception(code, "Could not apply exact source/target/scaling configuration.");
+        }
+
+        public static ActiveDisplayConfiguration ApplyCentered4K()
+        {
+            ActiveDisplayConfiguration expected = CaptureActiveConfiguration().CreateCentered4K();
+            ApplyConfiguration(expected);
+            return expected;
+        }
+
+        public static void VerifyCentered4K(ActiveDisplayConfiguration expected = null)
+        {
+            ActiveDisplayConfiguration actual = CaptureActiveConfiguration();
+            actual.RequireCentered4K(false);
+            if (expected != null && !expected.HasSamePresentation(actual))
+                throw new InvalidOperationException("Driver changed the requested centered desktop or native signal timings.");
+        }
+
+        public static void RestoreConfiguration(ActiveDisplayConfiguration original)
+        {
+            ApplyConfiguration(original);
+            SetHdr(original.Identity, original.Hdr);
+            int sourceIndex, targetIndex;
+            original.GetModeIndexes(out sourceIndex, out targetIndex);
+            NativeMethods.DISPLAYCONFIG_SOURCE_MODE source = original.Modes[sourceIndex].sourceMode;
+            NativeMethods.DISPLAYCONFIG_VIDEO_SIGNAL_INFO signal = original.Modes[targetIndex].targetMode.targetVideoSignalInfo;
+            int refresh = (int)Math.Round((double)signal.vSyncFreq.Numerator / signal.vSyncFreq.Denominator);
+            Verify(original.Identity, (int)source.width, (int)source.height, refresh, original.Hdr, TimeSpan.FromSeconds(6));
+            ActiveDisplayConfiguration actual = CaptureActiveConfiguration();
+            if (!original.HasSamePresentation(actual))
+                throw new InvalidOperationException("Original source, target signal, HDR or scaling was not restored exactly.");
+        }
+
+        public static void RequireAdvertisedMode(string identity, int width, int height, int refresh)
+        {
+            DisplayTarget target = EnumerateAllTargets().FirstOrDefault(delegate(DisplayTarget d) { return d.Active && d.Identity == identity; });
+            if (target == null || string.IsNullOrEmpty(target.GdiName)) throw new InvalidOperationException("No active monitor for mode discovery.");
+            for (int index = 0; index < 4096; index++)
+            {
+                NativeMethods.DEVMODE mode = new NativeMethods.DEVMODE();
+                mode.dmSize = (short)Marshal.SizeOf(typeof(NativeMethods.DEVMODE));
+                if (!NativeMethods.EnumDisplaySettings(target.GdiName, index, ref mode)) break;
+                if (mode.dmPelsWidth == width && mode.dmPelsHeight == height && Math.Abs(mode.dmDisplayFrequency - refresh) <= 1) return;
+            }
+            throw new InvalidOperationException("Monitor does not advertise " + width + "x" + height + "@" + refresh +
+                ". Select the appropriate monitor hardware mode first (330 Hz needs Dell Other Modes); no custom timing was created.");
+        }
+
         public static void ValidateCurrentConfiguration()
         {
             uint pathCount;
@@ -869,6 +1125,8 @@ namespace GamingDisplayController
 
         public static void SetHdr(string identity, bool enabled)
         {
+            // General Windows advanced-color enablement only. This does not select or
+            // verify HDR10 versus Dolby Vision; those remain per-display Windows/OSD choices.
             DisplayTarget target = EnumerateAllTargets().FirstOrDefault(delegate(DisplayTarget d) { return d.Active && d.Identity == identity; });
             if (target == null) throw new InvalidOperationException("Cannot set HDR because " + identity + " is not active.");
             NativeMethods.DISPLAYCONFIG_SET_ADVANCED_COLOR_STATE packet = new NativeMethods.DISPLAYCONFIG_SET_ADVANCED_COLOR_STATE();
@@ -1019,7 +1277,9 @@ namespace GamingDisplayController
 
             ContextMenuStrip menu = new ContextMenuStrip();
             menu.Items.Add("TV only (LG CX / LG C2)", null, delegate { RunFromTray(DisplayMode.Tv); });
-            menu.Items.Add("Alienware only", null, delegate { RunFromTray(DisplayMode.Alienware); });
+            menu.Items.Add("Alienware native 5K2K / 165 Hz", null, delegate { RunFromTray(DisplayMode.Alienware); });
+            menu.Items.Add("Alienware ultrawide / 330 Hz (manual)", null, delegate { RunFromTray(DisplayMode.Alienware330); });
+            menu.Items.Add("Alienware centered 4K / 165 Hz (manual)", null, delegate { RunFromTray(DisplayMode.Alienware4K); });
             menu.Items.Add("Virtual display only", null, delegate { RunFromTray(DisplayMode.Vdd); });
             menu.Items.Add("Reapply current lock", null, delegate { RunAction(Controller.Reapply); });
             menu.Items.Add("Show status", null, delegate { MessageBox.Show(Controller.GetStatus(false), "Gaming Display Controller"); });
@@ -1134,6 +1394,8 @@ namespace GamingDisplayController
         public const uint QDC_ONLY_ACTIVE_PATHS = 2;
         public const uint QDC_VIRTUAL_MODE_AWARE = 0x10;
         public const uint DISPLAYCONFIG_PATH_ACTIVE = 1;
+        public const uint DISPLAYCONFIG_PATH_SUPPORT_VIRTUAL_MODE = 8;
+        public const int DISPLAYCONFIG_SCALING_CENTERED = 2;
         public const uint DISPLAYCONFIG_PATH_MODE_IDX_INVALID = 0xFFFFFFFF;
         public const uint SDC_USE_SUPPLIED_DISPLAY_CONFIG = 0x20;
         public const uint SDC_TOPOLOGY_SUPPLIED = 0x10;
@@ -1179,7 +1441,31 @@ namespace GamingDisplayController
             public uint statusFlags;
         }
         [StructLayout(LayoutKind.Sequential)] public struct DISPLAYCONFIG_PATH_INFO { public DISPLAYCONFIG_PATH_SOURCE_INFO sourceInfo; public DISPLAYCONFIG_PATH_TARGET_INFO targetInfo; public uint flags; }
-        [StructLayout(LayoutKind.Explicit, Size = 64)] public struct DISPLAYCONFIG_MODE_INFO { [FieldOffset(0)] public int infoType; [FieldOffset(4)] public uint id; [FieldOffset(8)] public LUID adapterId; }
+        [StructLayout(LayoutKind.Sequential)] public struct POINTL { public int x; public int y; }
+        [StructLayout(LayoutKind.Sequential)] public struct DISPLAYCONFIG_2DREGION { public uint cx; public uint cy; }
+        [StructLayout(LayoutKind.Sequential)] public struct DISPLAYCONFIG_SOURCE_MODE
+        {
+            public uint width; public uint height; public int pixelFormat; public POINTL position;
+        }
+        [StructLayout(LayoutKind.Sequential)] public struct DISPLAYCONFIG_VIDEO_SIGNAL_INFO
+        {
+            public ulong pixelRate;
+            public DISPLAYCONFIG_RATIONAL hSyncFreq;
+            public DISPLAYCONFIG_RATIONAL vSyncFreq;
+            public DISPLAYCONFIG_2DREGION activeSize;
+            public DISPLAYCONFIG_2DREGION totalSize;
+            public uint videoStandard;
+            public int scanLineOrdering;
+        }
+        [StructLayout(LayoutKind.Sequential)] public struct DISPLAYCONFIG_TARGET_MODE { public DISPLAYCONFIG_VIDEO_SIGNAL_INFO targetVideoSignalInfo; }
+        [StructLayout(LayoutKind.Explicit, Size = 64)] public struct DISPLAYCONFIG_MODE_INFO
+        {
+            [FieldOffset(0)] public int infoType;
+            [FieldOffset(4)] public uint id;
+            [FieldOffset(8)] public LUID adapterId;
+            [FieldOffset(16)] public DISPLAYCONFIG_SOURCE_MODE sourceMode;
+            [FieldOffset(16)] public DISPLAYCONFIG_TARGET_MODE targetMode;
+        }
         [StructLayout(LayoutKind.Sequential)] public struct DISPLAYCONFIG_DEVICE_INFO_HEADER { public int type; public uint size; public LUID adapterId; public uint id; }
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         public struct DISPLAYCONFIG_TARGET_DEVICE_NAME

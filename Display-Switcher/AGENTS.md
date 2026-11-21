@@ -1,10 +1,15 @@
 # Display Switcher development context
 
+Draft source work is paused: read [WORK_IN_PROGRESS.md](WORK_IN_PROGRESS.md) first.
+It records the feature branch, offline checks, DV research and required next steps.
+Do not deploy or run the draft against live displays while the user is away.
+
 Read README.md, BASELINE_BACKUP.md and ../REBUILD.md first.
 The actual implementation is src/DisplayController/DisplayController.cs; build.ps1 builds both EXEs.
 The icon generation source is tools/New-TrayIcon.ps1 and recovery tests are in src plus test-recovery.ps1.
 Keep backups/2026-11-20 intact. Runtime deployment is C:/StreamingTools/DisplayController.
-Source recognizes old AW3423DW DELA1E4. AW3926QW DELA2F9 profiles are pending, not implemented.
+The installed baseline recognizes AW3423DW DELA1E4. This branch's draft source adds
+AW3926QW DELA2F9 profiles; they are not deployed or verified on hardware.
 Native 5120x2160/165 HDR/cap162 is the requested standard monitor selection; optional manual
 2560x1080/330/cap327 and 3840x2160/165 black bars/cap162 are planned. DSC is accepted.
 TV/streaming/audio/startup/recovery defaults must stay unchanged unless separately requested.
