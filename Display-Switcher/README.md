@@ -1,7 +1,8 @@
 # Gaming Display Controller
 
 Status: attended testing began on 2026-11-21 on branch `projects/aw3926qw-profiles`.
-The AW3926QW build is deployed; the tray/watchdog remains stopped during manual tests.
+The AW3926QW build is deployed. One tray/watchdog instance was restarted after manual
+native/4K, office-TV and hardware330/native round trips passed; further tray tests remain.
 Native -> centered 4K -> native passed controller checks and user visual confirmation.
 The remaining attended checks are tracked in
 [the results](docs/AW3926QW-ATTENDED-RESULTS.md); the full setup is not yet validated.

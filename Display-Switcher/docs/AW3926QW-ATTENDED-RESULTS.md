@@ -10,7 +10,7 @@ global profile were copied to ignored private storage:
 `local-private/display-switcher/pre-aw3926qw-deployment-2026-11-21-083315`.
 The original EXEs matched the committed baseline SHA-256 values.
 The new console and tray EXEs are installed under `C:/StreamingTools/DisplayController`.
-The tray/watchdog is deliberately not started during these manual tests.
+The tray/watchdog stayed stopped during the initial manual profile tests.
 No startup, Sunshine, audio, NVIDIA global, firmware or calibration settings were changed.
 
 ## Passed: native -> centered 4K -> native
@@ -51,7 +51,7 @@ Dell built-in 4K mode or NVIDIA scaling-setting change was needed for this resul
   Read-only status still showed native5120x2160/165/HDR with TV/VDD inactive and
   no further controller transitions logged. EDID availability remained true for the TV.
 
-## Passed: 330 entry, HDR and reapply; native return pending
+## Passed: native -> hardware330 -> native, HDR and reapply
 
 - Selecting Other Modes 39-inch 2560x1080/330 changed the monitor EDID from
   DELA2F9 to DELA2FA, with PnP name Alienware AW3926QW(DisplayPort DUAL).
@@ -65,17 +65,33 @@ Dell built-in 4K mode or NVIDIA scaling-setting change was needed for this resul
 - `set monitor-330` verified at08:58:07: monitor-only2560x1080/330/HDRon/cap327,
   TV and VDD inactive. User confirmed it worked, including the HDR correction.
 - `reapply` retained Alienware330 with those settings.
-- Hardware native-return, watchdog-active OSD workflow, actual game cap and VRR
-  remain unverified. Do not describe the whole330 workflow as complete yet.
+- User selected Other Modes Off and confirmed the picture returned. `set monitor`
+  verified at09:00:33: nativeDELA2F9, monitor-only5120x2160/165/HDRon/cap162.
+  User then confirmed the full ultrawide picture was correct.
+- Watchdog-active OSD workflow, actual game cap and VRR remain unverified.
+  Do not describe routine330 operation with the tray running as complete yet.
+
+## Initial tray startup
+
+- After all manual round trips passed, verified no existing controller process and
+  correct saved/actual native state, then started one updated tray at09:01:54.
+- After8seconds it remained running, with native5120x2160/165/HDR, TV/VDD inactive,
+  and no additional transitions logged. Icon/menu visibility awaits user confirmation.
+- The active-watchdog OSD interaction still needs validation: a hardware EDID change
+  can restore multiple outputs before the user reapplies a profile. Existing recovery
+  could then try the previously selected profile while its timing is unavailable.
+- User accidentally changed Smart HDR and manually restored HDR Peak1300Bright.
+  A subsequent read-only check confirmed native5120x2160/165/HDR remained active,
+  with one tray instance and no additional controller transitions. This verifies
+  Windows HDR state; the OSD preset is user-reported, not programmatically queried.
 
 ## Remaining
 
-- Return to native after disabling Dell hardware dual mode.
 - 4K reapply and exact rollback from a previously selected 4K state on a failed transition.
-- One supervised tray instance, topology/watchdog behavior, reboot startup.
+- Tray menu, hardware-mode interaction, topology/watchdog behavior, reboot startup.
 - Actual game cap/HDR/VRR checks; no measured latency or DSC-health claim is made.
 - Real handheld and Xbox streaming regressions after physical profiles are stable.
 - Dolby Vision disablement is user intent; HDR-on verification does not prove DV is off.
 
-At this checkpoint Alienware330 is selected and the tray is stopped. Re-read
+At this checkpoint native Alienware is selected and one tray instance is running. Re-read
 live state when resuming. The earlier source checkpoint and baseline are historical.
