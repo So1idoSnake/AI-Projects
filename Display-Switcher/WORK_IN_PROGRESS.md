@@ -8,7 +8,8 @@ Both EXEs are deployed; the tray/watchdog remains stopped during manual tests.
 An NVIDIA readback compatibility fix passes 98 isolated checks. Native -> centered 4K
 -> native 5120x2160/165/HDR passed controller checks and user visual confirmation.
 The source-only checkpoint below is historical; its no-deployment statements describe
-the earlier work, not the current installation. TV/330/streaming/startup/game tests remain.
+the earlier work, not the current installation. The office TV/native-monitor round trip
+and TV-off retention also passed. 330/streaming/startup/game tests remain.
 
 ## Earlier source-only checkpoint
 

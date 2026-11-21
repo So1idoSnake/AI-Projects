@@ -37,9 +37,22 @@ The read-only scanout-rectangle API exposed a partial-width scanout on this
 connection and is not used as proof of complete image placement. No custom timing,
 Dell built-in 4K mode or NVIDIA scaling-setting change was needed for this result.
 
+## Passed: monitor -> office TV -> native monitor
+
+- With the TV/soundbar powered on, the monitor briefly blanked a few times but
+  remained selected. No new controller transition was logged; the tray was stopped.
+  A GPU/link handshake is a possible explanation, not a diagnosed cause.
+- `set tv` verified at 08:53:06: office Samsung soundbar/C2 path active at
+  3840x2160/120/HDR, cap117, monitor/VDD inactive. User confirmed the TV picture.
+- `set monitor` verified at 08:53:28: AW3926QW active at 5120x2160/165/HDR,
+  cap162, TV/VDD inactive. User confirmed the full ultrawide picture.
+- This checks the office path only; the loft CX was not cable-swapped or retested.
+- The user then powered off the TV and confirmed the monitor remained good.
+  Read-only status still showed native5120x2160/165/HDR with TV/VDD inactive and
+  no further controller transitions logged. EDID availability remained true for the TV.
+
 ## Remaining
 
-- TV -> native transition with the selected TV visible to the user.
 - Manual Dell hardware330 mode, cap327, and return to native after disabling dual mode.
 - 4K reapply and exact rollback from a previously selected 4K state on a failed transition.
 - One supervised tray instance, topology/watchdog behavior, reboot startup.
