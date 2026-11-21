@@ -87,10 +87,13 @@ changing the implementation. The preferred route remains NVIDIA/GPU management.
 ## Manual 330 Hz
 
 Switch Dell Other Modes to 39-inch 2560x1080/330 as required, then use
-`set monitor-330`. Check advertised mode, exact refresh, HDR, VRR, cap327 and
+the running tray's automatic hardware-mode synchronization; do not click another
+profile. Wait about eight seconds and check savedAlienware330, advertised mode,
+exact refresh, HDR, VRR, cap327 and
 game stability. Confirm monitor identity remains recognized through the OSD change.
 Test `reapply` retains this explicitly selected profile.
-Returning to native may require turning the Dell hardware dual mode off first.
+Turn Other Modes Off and let the tray follow back to stock native/cap162/HDR.
+Verify the saved profile matches; no extra tray selection should be necessary.
 The controller cannot return to 5K2K if the monitor no longer advertises it.
 Do not work around that by silently selecting the optional mode during recovery.
 
@@ -99,6 +102,8 @@ Do not work around that by silently selecting the optional mode during recovery.
 After manual profiles pass, enable one tray instance under supervision. Confirm:
 
 - Turning on a TV does not take over a correctly selected monitor profile.
+- Monitor hardware synchronization occurs only from a selected monitor profile;
+  no hardware toggle can take over TV/VDD/Stream. Native EDID preserves manual4K.
 - A slow HDR/mode transition does not trigger repeated switching from stale queued
   watchdog work after the desired topology is already correct.
 - Power loss/disconnect uses existing TV -> native monitor -> VDD priority.

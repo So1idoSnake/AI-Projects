@@ -5,14 +5,17 @@
 The user is home and authorized deployment/testing. See
 [attended results](docs/AW3926QW-ATTENDED-RESULTS.md) for current state and remaining work.
 Both EXEs are deployed; one tray/watchdog instance was started after manual round trips passed.
-NVIDIA readback and dual-mode identity fixes pass 101 isolated checks. Native -> centered 4K
+NVIDIA readback, dual-mode identity and hardware-follow fixes pass136 isolated checks. Native -> centered4K
 -> native 5120x2160/165/HDR passed controller checks and user visual confirmation.
 The source-only checkpoint below is historical; its no-deployment statements describe
 the earlier work, not the current installation. The office TV/native-monitor round trip
 and TV-off retention also passed. 330 entry/HDR/cap327 and reapply passed after recognizing
 the new DELA2FA EDID. Return from hardware330 to native also passed with HDR/cap162
-and user visual confirmation. Streaming/reboot/game tests and OSD workflow with the
-watchdog active remain. Initial tray startup left native mode unchanged.
+and user visual confirmation. The user requested hardware-only native/330 switching;
+the running tray now follows stable hardware choices and updates HDR/caps/saved state.
+Both directions passed without tray clicks. Centered4K remained selected, its reapply
+passed, and an intentional unsupported330 request rolled back exactly to centered4K.
+The last test intentionally returned to native. Streaming/reboot/game tests remain.
 
 ## Earlier source-only checkpoint
 

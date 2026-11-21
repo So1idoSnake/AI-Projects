@@ -15,10 +15,13 @@ Native 5120x2160/165 HDR/cap162 is the requested standard monitor selection; opt
 2560x1080/330/cap327 and 3840x2160/165 black bars/cap162 are coded. DSC is accepted.
 4K uses NVIDIA/GPU centering through Windows CCD, not Dell Other Modes. Where CCD
 reports identity for the smaller desktop, read-only NVAPI must confirm GPU no-scaling.
-330 Hz needs the monitor's hardware mode. An OSD change can restore other Windows
-outputs and disable HDR for the newly enumerated identity. The initial OSD tests used
-a stopped tray and then reselected the intended profile. The tray has now been started;
-the OSD workflow with an active watchdog still needs validation. Neither OSD nor NVIDIA global
+330 Hz needs the monitor's hardware mode. At the user's request, the running tray now
+follows native/DUAL hardware changes while a monitor profile is selected. Hardware-only
+round-trip tests passed with HDR/cap327 and HDR/cap162. It waits for stable observations,
+rechecks under the operation lock, and skips resolution resets when already correct.
+It never follows these changes from TV/Stream/VDD state, and native EDID does not cancel
+explicit centered4K. Recovery priority/timers remain unchanged;136 isolated checks pass.
+Neither OSD nor NVIDIA global
 settings are automated. The user will disable DV manually and keep HDR10; do not add DV automation.
 TV/streaming/audio/startup/recovery defaults must stay unchanged unless separately requested.
 The old binaries were privately backed up before deployment. The new tray/watchdog

@@ -97,10 +97,44 @@ Dell built-in 4K mode or NVIDIA scaling-setting change was needed for this resul
   HDRon, source position0,0, identity scaling, RTSS global cap162, and TV/VDD inactive.
 - One tray instance remained running. No new transition errors appeared during this round trip.
 
+## Passed: hardware-only native/330 synchronization
+
+- User found that OSD-only toggles restored picture/HDR seamlessly. Read-only status
+  confirmed native5120x2160/165/HDR but savedAlienware330 and RTSS cap327. This established
+  the need to follow hardware state rather than require another tray click.
+- User authorized this change and expects to use330 rarely. Added a stable hardware-mode
+  observer, scoped to already selected monitor profiles. It waits at least two seconds,
+  rechecks live state under the operation mutex, and uses a six-second retry cooldown.
+  TV/VDD/Stream/Transition selections and explicit native-EDID4K are protected.
+- Correct resolution is retained; only extra-output cleanup, HDR, cap and saved state
+  are updated as needed. Returning from DUAL to a native EDID that remembers4K restores
+  stock5K2K. The automatic recovery candidate list is unchanged.
+- Both EXEs compiled and136 isolated checks passed, including transient, stale-state,
+  cooldown, ambiguous identity and TV/stream/4K exclusion cases.
+- Previous deployed build/data and RTSS profile are privately backed up under
+  `local-private/display-switcher/pre-hardware-sync-2026-11-21-091750`.
+- New tray started09:17:51 and automatically corrected the existing stale330/native
+  mismatch by09:17:57: native5120x2160/165/HDR/cap162, TV/VDD inactive.
+- User used only the monitor menu to select330. At09:18:30, tray automatically saved
+  Alienware330; readback confirmed2560x1080/~329.988Hz/HDR/cap327 with other outputs inactive.
+- User used only Other Modes Off to return. At09:19:26, tray automatically saved
+  Alienware; readback confirmed5120x2160/165/HDR/cap162. User confirmed full ultrawide.
+
+## Passed: explicit4K preservation, reapply and exact rollback
+
+- With the new hardware follower active, explicitly selected centered4K at09:20:36.
+  It remained selected after eight seconds; reapply succeeded at09:20:46.
+- An intentional negative test requested330 while native hardware mode was selected.
+  This produced the expected advertisement-check error at09:20:46, exit10, then
+  exact rollback to centered4K at09:20:47. Readback confirmed desktop3840x2160 inside
+  unchanged5120x2160/165 signal, HDR, NVIDIA GPU-centered3, cap162, TV/VDD inactive.
+- The test intentionally returned to stock native at09:20:49. The user's observed
+  back-and-forth picture changes matched this announced test sequence; no new fault
+  was identified from those changes. Further unattended live switching was not started.
+
 ## Remaining
 
-- 4K reapply and exact rollback from a previously selected 4K state on a failed transition.
-- Tray hardware-mode interaction, topology/watchdog behavior, reboot startup.
+- Physical power-loss/fallback behavior and reboot startup.
 - Actual game cap/HDR/VRR checks; no measured latency or DSC-health claim is made.
 - Real handheld and Xbox streaming regressions after physical profiles are stable.
 - Dolby Vision disablement is user intent; HDR-on verification does not prove DV is off.

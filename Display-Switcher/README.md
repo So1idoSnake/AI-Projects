@@ -16,7 +16,7 @@ Read [WORK_IN_PROGRESS.md](WORK_IN_PROGRESS.md) for the source checkpoint and
 |---|---|---|---|---|
 | TV | 3840x2160 / 120 Hz | On | 117 | Existing default; CX or C2/soundbar |
 | Monitor / Alienware | 5120x2160 / 165 Hz | On | 162 | Standard monitor selection and monitor recovery candidate |
-| Monitor 330 | 2560x1080 / 330 Hz | On | 327 | Explicit manual selection only |
+| Monitor 330 | 2560x1080 / 330 Hz | On | 327 | User selects hardware330; tray follows while monitor selected |
 | Monitor 4K | 3840x2160 / 165 Hz, centered | On | 162 | Explicit manual selection only |
 | Manual/safety VDD | 1920x1080 / 120 Hz | Off | 120 | Existing behavior |
 | Sunshine stream | Client-requested 1080p or 4K / 60, 90, 120 Hz | Client request | Requested FPS | Existing behavior |
@@ -56,9 +56,13 @@ Examples document available commands; they are not a request to execute them.
 OSD Other Modes selection. Hold the joystick inward four seconds to open the
 shortcut and choose 39-inch 21:9 2560x1080/330. The hardware change exposes a new
 EDID; Windows can restore an extended topology and leave HDR off on the new identity.
-Applying the explicit monitor profile disables the other outputs and enables HDR again.
-The controller does not operate the OSD or invent a
-custom timing. Returning to native 5K2K can require turning that hardware mode off.
+While any monitor profile is selected, the running tray follows a stable native/DUAL
+hardware change, disables restored extra outputs if necessary, enables HDR, applies
+cap327 or cap162, and saves the matching profile. No second tray selection is needed.
+It avoids resetting resolution when Windows already selected the correct mode.
+Set Other Modes Off to return to stock native; wait about eight seconds for synchronization.
+The explicit330 tray/CLI choice remains available but requires hardware330 first.
+The controller does not operate the OSD or invent a custom timing.
 If native is unavailable during recovery, the existing TV/native-monitor/VDD
 fallback sequence can reach VDD; it does not select an optional resolution instead.
 
@@ -96,10 +100,14 @@ Manual optional profiles remain selected on reapply; they are never automatic
 recovery candidates. Existing rollback can temporarily restore a previously chosen
 optional mode between failed recovery attempts.
 
-The watchdog remains topology-only with the existing timers. It now rechecks
-topology under the operation lock so an action queued during a completed slow
-transition does not reapply it unnecessarily. It does not enforce resolution/HDR/caps
-continuously. Streaming remains owned by Sunshine prep/undo; no socket inference.
+Topology recovery retains its existing timers and priority. The user-requested exception
+is monitor hardware-mode synchronization: two stable observations at least two seconds
+apart follow a native/DUAL change, with a six-second retry cooldown. Work rechecks current
+state under the operation lock; TV, VDD, Stream and Transition selections are excluded.
+Native EDID alone never cancels an explicit centered4K choice. A real hardware change
+to DUAL can select330; returning from DUAL restores stock native. Ordinary recovery never
+adds330 as an automatic candidate. Resolution/HDR/caps are not otherwise enforced continuously.
+Streaming remains owned by Sunshine prep/undo; no socket inference.
 
 Sunshine still reads `SUNSHINE_CLIENT_WIDTH`, `HEIGHT`, `FPS`, `HDR`, accepts 1080p
 and 4K at 60/90/120, and uses the requested FPS cap and HDR state. Stop Stream
@@ -113,7 +121,7 @@ See [SOURCE_GUIDE.md](SOURCE_GUIDE.md) for source paths, compiler and RTSS depen
 `./build.ps1` compiles console/tray into ignored `outputs/DisplayController`.
 `./test-recovery.ps1` runs isolated checks using synthetic configurations and
 process-local test variables; it does not call the live display/HDR/RTSS APIs or
-write controller state. The latest source pass has 101 checks passing and both
+write controller state. The latest source pass has 136 checks passing and both
 application builds compiling. The build is deployed for attended manual testing.
 
 The original September/October deployed setup passed its historical staged tests;

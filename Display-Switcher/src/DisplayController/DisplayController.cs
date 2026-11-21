@@ -142,6 +142,8 @@ namespace GamingDisplayController
 
     internal sealed class MonitorProfile
     {
+        internal const string NativeProductId = "DELA2F9";
+        internal const string DualProductId = "DELA2FA";
         public readonly int Width;
         public readonly int Height;
         public readonly int Refresh;
@@ -311,6 +313,17 @@ namespace GamingDisplayController
         public int Height;
         public int RefreshRate;
 
+        public DisplayMode? HardwareMonitorMode
+        {
+            get
+            {
+                string upper = (DevicePath ?? "").ToUpperInvariant();
+                if (upper.Contains("DISPLAY#" + MonitorProfile.NativeProductId + "#")) return DisplayMode.Alienware;
+                if (upper.Contains("DISPLAY#" + MonitorProfile.DualProductId + "#")) return DisplayMode.Alienware330;
+                return null;
+            }
+        }
+
         public string Identity
         {
             get
@@ -319,7 +332,7 @@ namespace GamingDisplayController
                 if (upper.Contains("DISPLAY#MTT1337")) return "VDD";
                 // AW3926QW native and DisplayPort DUAL expose different EDIDs.
                 // Keep exact product boundaries; the retired AW3423DW stays excluded.
-                if (upper.Contains("DISPLAY#DELA2F9#") || upper.Contains("DISPLAY#DELA2FA#")) return "Alienware";
+                if (HardwareMonitorMode.HasValue) return "Alienware";
                 // The loft CX exposes its native LG/GSM EDID. The office C2 is
                 // connected through a Samsung HDMI 2.1 soundbar, which owns the
                 // downstream EDID and is deliberately recognized by its exact ID.
@@ -327,6 +340,57 @@ namespace GamingDisplayController
                     (FriendlyName ?? "").IndexOf("LG", StringComparison.OrdinalIgnoreCase) >= 0) return "TV";
                 return "Other";
             }
+        }
+    }
+
+    // This follows the user's physical OSD choice only while a monitor profile is
+    // already selected. It never selects a monitor from TV/VDD/Stream recovery.
+    internal sealed class MonitorHardwareTracker
+    {
+        private DisplayMode? pendingMode;
+        private string pendingDevice;
+        private DateTime pendingSince;
+        private DateTime nextAttempt;
+
+        internal static DisplayMode? FindMode(ControllerState state, IEnumerable<DisplayTarget> displays)
+        {
+            if (state == null || !MonitorProfile.IsMonitor(state.Mode)) return null;
+            List<DisplayTarget> active = displays.Where(delegate(DisplayTarget d) { return d.Active && d.Identity == "Alienware"; }).ToList();
+            if (active.Count != 1) return null;
+            DisplayTarget target = active[0];
+            DisplayMode? observed = target.HardwareMonitorMode;
+            if (!target.Available || !target.HdrQuerySucceeded || !target.HdrSupported || !observed.HasValue || observed.Value == state.Mode)
+                return null;
+            // Centered 4K shares the native EDID; seeing that EDID must not cancel
+            // its explicit selection. A real native->DUAL hardware change can.
+            if (state.Mode == DisplayMode.Alienware4K && observed.Value == DisplayMode.Alienware) return null;
+            MonitorProfile profile = MonitorProfile.Get(observed.Value);
+            bool geometry = target.Width == profile.Width && target.Height == profile.Height;
+            // The native EDID can remember a previously selected centered-4K desktop.
+            // Returning from DUAL still chooses stock/native, never automatic 4K.
+            if (observed.Value == DisplayMode.Alienware && target.Width == 3840 && target.Height == 2160) geometry = true;
+            if (!geometry || Math.Abs(target.RefreshRate - profile.Refresh) > 1) return null;
+            return observed;
+        }
+
+        internal DisplayMode? Observe(ControllerState state, IList<DisplayTarget> displays, DateTime now, out bool pending)
+        {
+            DisplayMode? candidate = FindMode(state, displays);
+            pending = candidate.HasValue;
+            if (!pending)
+            {
+                pendingMode = null; pendingDevice = null;
+                return null;
+            }
+            string device = displays.First(delegate(DisplayTarget d) { return d.Active && d.Identity == "Alienware"; }).DevicePath;
+            if (pendingMode != candidate || pendingDevice != device || now < pendingSince)
+            {
+                pendingMode = candidate; pendingDevice = device; pendingSince = now; nextAttempt = now;
+                return null;
+            }
+            if (now - pendingSince < TimeSpan.FromSeconds(2) || now < nextAttempt) return null;
+            nextAttempt = now.AddSeconds(6);
+            return candidate;
         }
     }
 
@@ -779,6 +843,50 @@ namespace GamingDisplayController
             return SetMode(state.Mode, true, "reapply");
         }
 
+        public static int SyncMonitorHardwareMode(DisplayMode expected)
+        {
+            // RunLocked is held by the tray worker. Recheck fresh state here so
+            // an observation queued before a TV/stream/manual-4K selection is harmless.
+            try
+            {
+                ControllerState state = ControllerState.Load();
+                List<DisplayTarget> displays = DisplayManager.EnumerateAllTargets();
+                if (MonitorHardwareTracker.FindMode(state, displays) != expected) return 0;
+                MonitorProfile profile = MonitorProfile.Get(expected);
+                Logger.Info("Monitor hardware mode synchronization requested: " + state.Mode + " -> " + expected);
+                if (displays.Count(delegate(DisplayTarget d) { return d.Active; }) != 1)
+                    DisplayManager.ActivateOnly("Alienware");
+                displays = DisplayManager.EnumerateAllTargets();
+                if (MonitorHardwareTracker.FindMode(state, displays) != expected) return 0;
+                DisplayTarget target = displays.Single(delegate(DisplayTarget d) { return d.Active && d.Identity == "Alienware"; });
+                if (target.Width != profile.Width || target.Height != profile.Height || Math.Abs(target.RefreshRate - profile.Refresh) > 1)
+                {
+                    DisplayManager.RequireAdvertisedMode("Alienware", profile.Width, profile.Height, profile.Refresh);
+                    DisplayManager.SetActiveMode("Alienware", profile.Width, profile.Height, profile.Refresh);
+                    target = DisplayManager.EnumerateAllTargets().Single(delegate(DisplayTarget d) { return d.Active && d.Identity == "Alienware"; });
+                }
+                if (target.HardwareMonitorMode != expected || !target.HdrQuerySucceeded || !target.HdrSupported)
+                    throw new InvalidOperationException("Monitor hardware/HDR state changed during synchronization.");
+                if (!target.HdrEnabled) DisplayManager.SetHdr("Alienware", true);
+                DisplayManager.Verify("Alienware", profile.Width, profile.Height, profile.Refresh, true, TimeSpan.FromSeconds(6));
+                // Save the new preference only after the cap is read back correctly.
+                RtssManager.SetLimit(profile.Limit);
+                state.Mode = expected; state.TransitionDestination = expected;
+                state.ClearStreamMetadata(); state.Save();
+                Logger.Info("Monitor hardware mode synchronized: " + expected + " " + profile.Width + "x" + profile.Height +
+                    "@" + profile.Refresh + " HDR=True cap=" + profile.Limit);
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                // The OSD now owns the hardware mode: forcing the old profile back
+                // could request a timing it no longer supports. Keep it visible and
+                // retry synchronization after the observation cooldown instead.
+                Logger.Error("Monitor hardware mode synchronization failed", ex);
+                return 10;
+            }
+        }
+
         public static int WatchdogRecover()
         {
             ControllerState state = ControllerState.Load();
@@ -789,7 +897,9 @@ namespace GamingDisplayController
 
             // The timer may have queued this action during a slow HDR transition.
             // Recheck under the operation lock instead of reapplying a completed switch.
-            if (IsTopologyCorrect(state)) return 0;
+            List<DisplayTarget> displays = DisplayManager.EnumerateAllTargets();
+            if (MonitorHardwareTracker.FindMode(state, displays).HasValue) return 0;
+            if (IsTopologyCorrect(state, displays)) return 0;
 
             string desired = DesiredIdentity(state.Mode);
             if (desired == "TV" || desired == "Alienware")
@@ -814,9 +924,14 @@ namespace GamingDisplayController
 
         public static bool IsTopologyCorrect(ControllerState state)
         {
+            return IsTopologyCorrect(state, DisplayManager.EnumerateAllTargets());
+        }
+
+        internal static bool IsTopologyCorrect(ControllerState state, IEnumerable<DisplayTarget> displays)
+        {
             string desired = DesiredIdentity(state.Mode);
             if (desired.Length == 0) return true;
-            List<DisplayTarget> active = DisplayManager.EnumerateAllTargets().Where(delegate(DisplayTarget d) { return d.Active; }).ToList();
+            List<DisplayTarget> active = displays.Where(delegate(DisplayTarget d) { return d.Active; }).ToList();
             return active.Count == 1 && active[0].Identity == desired;
         }
     }
@@ -1503,6 +1618,7 @@ namespace GamingDisplayController
         private readonly System.Windows.Forms.Timer timer;
         private readonly Mutex singleton;
         private DateTime topologyWrongSince = DateTime.MinValue;
+        private readonly MonitorHardwareTracker hardwareTracker = new MonitorHardwareTracker();
 
         public TrayApplicationContext()
         {
@@ -1597,7 +1713,22 @@ namespace GamingDisplayController
                     return;
                 }
 
-                bool correct = Controller.IsTopologyCorrect(state);
+                List<DisplayTarget> displays = DisplayManager.EnumerateAllTargets();
+                bool hardwarePending;
+                DisplayMode? synchronize = hardwareTracker.Observe(state, displays, DateTime.UtcNow, out hardwarePending);
+                if (hardwarePending)
+                {
+                    // Give a stable OSD choice priority over reapplying a now stale
+                    // monitor timing. Ordinary TV/stream recovery keeps its old policy.
+                    topologyWrongSince = DateTime.MinValue;
+                    if (synchronize.HasValue)
+                    {
+                        DisplayMode selected = synchronize.Value;
+                        RunAction(delegate { return Controller.SyncMonitorHardwareMode(selected); });
+                    }
+                    return;
+                }
+                bool correct = Controller.IsTopologyCorrect(state, displays);
                 if (!correct)
                 {
                     if (topologyWrongSince == DateTime.MinValue) topologyWrongSince = DateTime.UtcNow;

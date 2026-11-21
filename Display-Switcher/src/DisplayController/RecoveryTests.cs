@@ -35,6 +35,7 @@ namespace GamingDisplayController
                 throw new Exception("Finished stream metadata was not cleared correctly.");
             checks++;
             CheckMonitorProfiles();
+            CheckHardwareModeTracking();
             CheckCenteredPlan();
             CheckPresentationSettling();
             CheckStreamRequests();
@@ -86,6 +87,77 @@ namespace GamingDisplayController
             Assert(new DisplayTarget { DevicePath = @"\\?\DISPLAY#MTT1337#example" }.Identity == "VDD", "VDD identity changed.");
             // Optional variants are deliberately absent from the automatic candidate list.
             Check("optional-only display modes are never automatic candidates", new DisplayMode[] { DisplayMode.Alienware330, DisplayMode.Alienware4K, DisplayMode.Vdd }, new DisplayMode[0], "Vdd", 0);
+        }
+
+        private static DisplayTarget HardwareTarget(DisplayMode mode)
+        {
+            MonitorProfile profile = MonitorProfile.Get(mode);
+            return new DisplayTarget {
+                DevicePath = @"\\?\DISPLAY#" + (mode == DisplayMode.Alienware330 ? MonitorProfile.DualProductId : MonitorProfile.NativeProductId) + "#test",
+                Active = true, Available = true, HdrQuerySucceeded = true, HdrSupported = true, HdrEnabled = true,
+                Width = profile.Width, Height = profile.Height, RefreshRate = profile.Refresh
+            };
+        }
+
+        private static void CheckHardwareModeTracking()
+        {
+            ControllerState native = new ControllerState { Mode = DisplayMode.Alienware };
+            ControllerState dual = new ControllerState { Mode = DisplayMode.Alienware330 };
+            ControllerState centered = new ControllerState { Mode = DisplayMode.Alienware4K };
+            DisplayTarget nativeTarget = HardwareTarget(DisplayMode.Alienware);
+            DisplayTarget dualTarget = HardwareTarget(DisplayMode.Alienware330);
+            DisplayTarget fourK = HardwareTarget(DisplayMode.Alienware4K);
+            Assert(MonitorHardwareTracker.FindMode(native, new[] { dualTarget }) == DisplayMode.Alienware330, "Native->DUAL not followed.");
+            Assert(MonitorHardwareTracker.FindMode(dual, new[] { nativeTarget }) == DisplayMode.Alienware, "DUAL->native not followed.");
+            Assert(MonitorHardwareTracker.FindMode(dual, new[] { fourK }) == DisplayMode.Alienware, "Native hardware return adopted optional4K.");
+            Assert(MonitorHardwareTracker.FindMode(centered, new[] { dualTarget }) == DisplayMode.Alienware330, "Explicit hardware DUAL did not supersede centered4K.");
+            Assert(MonitorHardwareTracker.FindMode(centered, new[] { fourK }) == null, "Explicit centered4K was cancelled by native EDID.");
+            Assert(MonitorHardwareTracker.FindMode(centered, new[] { nativeTarget }) == null, "Centered4K was silently reset to native.");
+            Assert(MonitorHardwareTracker.FindMode(native, new[] { nativeTarget }) == null, "Unchanged native mode queued work.");
+            Assert(MonitorHardwareTracker.FindMode(dual, new[] { dualTarget }) == null, "Unchanged DUAL mode queued work.");
+            foreach (DisplayMode mode in new[] { DisplayMode.Tv, DisplayMode.Vdd, DisplayMode.Stream, DisplayMode.Transition })
+                Assert(MonitorHardwareTracker.FindMode(new ControllerState { Mode = mode }, new[] { dualTarget }) == null,
+                    "Monitor hardware affected " + mode);
+            Assert(MonitorHardwareTracker.FindMode(native, new[] { nativeTarget, dualTarget }) == null, "Ambiguous active monitor identities accepted.");
+            DisplayTarget tv = new DisplayTarget { DevicePath = @"\\?\DISPLAY#SAM721B#test", Active = true, Available = true };
+            Assert(MonitorHardwareTracker.FindMode(native, new[] { dualTarget, tv }) == DisplayMode.Alienware330,
+                "OSD-restored extra output blocked hardware cleanup.");
+            Assert(!Controller.IsTopologyCorrect(native, new[] { dualTarget, tv }), "Multiple active outputs treated as correct.");
+            dualTarget.HdrEnabled = false;
+            Assert(MonitorHardwareTracker.FindMode(native, new[] { dualTarget }) == DisplayMode.Alienware330, "HDR-off hardware mode was not repairable.");
+            dualTarget.HdrQuerySucceeded = false;
+            Assert(MonitorHardwareTracker.FindMode(native, new[] { dualTarget }) == null, "Unknown HDR state accepted.");
+            dualTarget.HdrQuerySucceeded = true; dualTarget.HdrSupported = false;
+            Assert(MonitorHardwareTracker.FindMode(native, new[] { dualTarget }) == null, "Missing HDR support accepted.");
+            dualTarget.HdrSupported = true; dualTarget.Available = false;
+            Assert(MonitorHardwareTracker.FindMode(native, new[] { dualTarget }) == null, "Unavailable hardware mode accepted.");
+            dualTarget.Available = true; dualTarget.Active = false;
+            Assert(MonitorHardwareTracker.FindMode(native, new[] { dualTarget }) == null, "Inactive hardware mode adopted.");
+            dualTarget.Active = true; dualTarget.Width = 5120;
+            Assert(MonitorHardwareTracker.FindMode(native, new[] { dualTarget }) == null, "Transient dual EDID/native geometry accepted.");
+            dualTarget.Width = 2560; dualTarget.RefreshRate = 165;
+            Assert(MonitorHardwareTracker.FindMode(native, new[] { dualTarget }) == null, "Unsettled DUAL refresh accepted.");
+            dualTarget.RefreshRate = 330;
+            MonitorHardwareTracker tracker = new MonitorHardwareTracker();
+            DateTime now = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            bool pending;
+            Assert(tracker.Observe(native, new[] { dualTarget }, now, out pending) == null && pending, "Single OSD observation queued work.");
+            Assert(tracker.Observe(native, new[] { dualTarget }, now.AddSeconds(1), out pending) == null && pending, "Hardware settling delay ignored.");
+            Assert(tracker.Observe(native, new[] { dualTarget }, now.AddSeconds(2), out pending) == DisplayMode.Alienware330 && pending,
+                "Stable OSD choice did not synchronize.");
+            Assert(tracker.Observe(native, new[] { dualTarget }, now.AddSeconds(4), out pending) == null && pending, "Duplicate hardware action queued before cooldown.");
+            Assert(tracker.Observe(native, new[] { dualTarget }, now.AddSeconds(8), out pending) == DisplayMode.Alienware330,
+                "Failed synchronization could not retry.");
+            Assert(tracker.Observe(dual, new[] { dualTarget }, now.AddSeconds(9), out pending) == null && !pending, "Completed sync did not clear observation.");
+            Assert(tracker.Observe(dual, new[] { nativeTarget }, now.AddSeconds(10), out pending) == null && pending, "Native return was not debounced.");
+            Assert(tracker.Observe(new ControllerState { Mode = DisplayMode.Stream }, new[] { nativeTarget }, now.AddSeconds(11), out pending) == null && !pending,
+                "Stream did not cancel pending monitor sync.");
+            Assert(tracker.Observe(dual, new[] { nativeTarget }, now.AddSeconds(12), out pending) == null && pending, "Old observation survived stream selection.");
+            Assert(tracker.Observe(dual, new[] { nativeTarget }, now.AddSeconds(14), out pending) == DisplayMode.Alienware, "Native return was not adopted.");
+            nativeTarget.DevicePath = @"\\?\DISPLAY#DELA2F9#replacement";
+            Assert(tracker.Observe(dual, new[] { nativeTarget }, now.AddSeconds(15), out pending) == null && pending, "Device change reused old stability window.");
+            Assert(tracker.Observe(dual, new[] { nativeTarget }, now.AddSeconds(17), out pending) == DisplayMode.Alienware, "Stable replacement observation rejected.");
+            Assert(tracker.Observe(dual, new[] { nativeTarget }, now.AddSeconds(16), out pending) == null, "Backward clock ignored cooldown.");
         }
 
         private static ActiveDisplayConfiguration NativeSnapshot()
