@@ -1,0 +1,7 @@
+# Generated builds and runtime data; the deliberate baseline snapshot is retained.
+/outputs/
+/work/
+**/data/
+*.log
+*.tmp
+*.pdb

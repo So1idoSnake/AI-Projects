@@ -1,0 +1,10 @@
+dd_config_revert_on_disconnect = enabled
+dd_configuration_option = ensure_only_display
+encoder = nvenc
+global_prep_cmd = [{"do":"powershell.exe -executionpolicy bypass -file \"C:\\StreamingTools\\AutoHDRSwitch\\StreamMonitor.ps1\" -n AutoHDR","elevated":false,"undo":"powershell.exe -executionpolicy bypass -file \"C:\\StreamingTools\\AutoHDRSwitch\\UndoScript.ps1\" -n AutoHDR"}]
+hevc_mode = 0
+min_log_level = 1
+nvenc_preset = 4
+output_name = {9acddf6d-43cc-576e-9aff-0c5fc80b4cc8}
+virtual_sink = 5
+
