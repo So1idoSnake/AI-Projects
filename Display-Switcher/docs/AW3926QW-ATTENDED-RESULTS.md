@@ -132,6 +132,37 @@ Dell built-in 4K mode or NVIDIA scaling-setting change was needed for this resul
   back-and-forth picture changes matched this announced test sequence; no new fault
   was identified from those changes. Further unattended live switching was not started.
 
+## Missing picture investigation and controlled game launch
+
+- At09:24:24 the tray logged Alienware unavailable for five seconds, then selected
+  TV via the existing physical-path fallback. Gears started at11:09:08, so it did
+  not cause the earlier09:24 switch. The reason for that monitor disappearance
+  has not yet been established.
+- User recalled leaving home a few minutes around that timestamp and said a
+  monitor power-off was possible; the exact physical power action remains unconfirmed.
+- When the user reported no picture on the Alienware, TV/Samsung was the sole
+  active output at3840x2160/120/HDR; the physical TV was off. After the user also
+  powered off the soundbar and waited six seconds, Windows still reported its
+  SAM721B connection available=true, active=false. Availability does not establish
+  that the endpoint can currently show a picture.
+- First attempted monitor restore at11:10:46 hit Win32error5 for validation and
+  rollback. LogonUI was present during the session check, but the precise desktop
+  restriction was not proven. A later read-only check reported Default input
+  desktop; retry restored native monitor-only5120x2160/165/HDR/cap162 at11:12:20.
+- Current AC display-off and system-sleep timeouts both read0/never; neither setting
+  explains the09:24 disappearance. No relevant GPU/display system errors were
+  found in the inspected incident/launch windows.
+- User got the game working, changed its resolution, closed it, and authorized
+  further testing. Launched the existing Xbox app normally at11:22:14, preserving
+  game settings. During40seconds of observation the sole active output stayed
+  Alienware5120x2160/165/HDR, with no controller transitions or new GPU/display
+  warnings/errors. User confirmed the game picture was visible.
+- This did not reproduce a game-specific launch bug. It does not prove there can
+  be no fullscreen/driver issue under other conditions. Game HDR rendering,
+  measured FPS/VRR and idle/power-off recovery have not been established by this check.
+- No driver, power setting, game configuration or fallback-policy change was made
+  during this investigation. The test left the game open on the monitor.
+
 ## Remaining
 
 - Physical power-loss/fallback behavior and reboot startup.
