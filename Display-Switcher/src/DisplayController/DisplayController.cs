@@ -502,6 +502,44 @@ namespace GamingDisplayController
             return ApplyProfile(mode, identity, width, height, refresh, hdr, limit, persist, reason);
         }
 
+        internal static bool SnapshotMatchesState(ActiveDisplayConfiguration snapshot, ControllerState state)
+        {
+            if (snapshot == null || snapshot.Identity != DesiredIdentity(state.Mode)) return false;
+            int width, height, refresh;
+            bool hdr;
+            if (MonitorProfile.IsMonitor(state.Mode))
+            {
+                MonitorProfile profile = MonitorProfile.Get(state.Mode);
+                width = profile.Width; height = profile.Height; refresh = profile.Refresh; hdr = true;
+            }
+            else if (state.Mode == DisplayMode.Tv)
+            {
+                width = TvWidth; height = TvHeight; refresh = TvRefresh; hdr = true;
+            }
+            else if (state.Mode == DisplayMode.Stream || state.Mode == DisplayMode.Vdd)
+            {
+                width = state.Mode == DisplayMode.Stream ? state.StreamWidth : 1920;
+                height = state.Mode == DisplayMode.Stream ? state.StreamHeight : 1080;
+                refresh = state.Mode == DisplayMode.Stream ? state.StreamFps : 120;
+                hdr = state.Mode == DisplayMode.Stream && state.StreamHdr;
+            }
+            else return false;
+            try
+            {
+                int sourceIndex, targetIndex;
+                snapshot.GetModeIndexes(out sourceIndex, out targetIndex);
+                NativeMethods.DISPLAYCONFIG_SOURCE_MODE source = snapshot.Modes[sourceIndex].sourceMode;
+                NativeMethods.DISPLAYCONFIG_RATIONAL rate = snapshot.Modes[targetIndex].targetMode.targetVideoSignalInfo.vSyncFreq;
+                NativeMethods.DISPLAYCONFIG_RATIONAL pathRate = snapshot.Paths[0].targetInfo.refreshRate;
+                if (source.width != width || source.height != height || snapshot.Hdr != hdr || rate.Denominator == 0 ||
+                    pathRate.Denominator == 0 || Math.Abs((double)rate.Numerator / rate.Denominator - refresh) > 1 ||
+                    Math.Abs((double)pathRate.Numerator / pathRate.Denominator - refresh) > 1) return false;
+                if (state.Mode == DisplayMode.Alienware4K) snapshot.RequireCentered4K(false);
+                return true;
+            }
+            catch (InvalidOperationException) { return false; }
+        }
+
         private static int ApplyProfile(DisplayMode finalMode, string identity, int width, int height, int refresh, bool hdr, int limit, bool persist, string reason)
         {
             ControllerState original = ControllerState.Load();
@@ -523,6 +561,16 @@ namespace GamingDisplayController
                     // Its profile remains the best-effort rollback if a snapshot is unavailable.
                 }
             }
+            if (originalConfiguration != null && !SnapshotMatchesState(originalConfiguration, original))
+            {
+                Logger.Warning("Actual display configuration does not match the saved original profile; exact snapshot rollback is unavailable.");
+                if (finalMode == DisplayMode.Alienware4K)
+                {
+                    Console.Error.WriteLine("Select/reapply a standard profile before centered 4K; no transition was started.");
+                    return 10;
+                }
+                originalConfiguration = null;
+            }
             ControllerState transition = original.Clone();
             transition.Mode = DisplayMode.Transition;
             transition.TransitionDestination = finalMode;
@@ -540,9 +588,10 @@ namespace GamingDisplayController
                 ActiveDisplayConfiguration centeredConfiguration = null;
                 if (finalMode == DisplayMode.Alienware4K)
                     centeredConfiguration = DisplayManager.ApplyCentered4K();
-                DisplayManager.Verify(identity, width, height, refresh, hdr, TimeSpan.FromSeconds(6));
                 if (finalMode == DisplayMode.Alienware4K)
                     DisplayManager.VerifyCentered4K(centeredConfiguration);
+                else
+                    DisplayManager.Verify(identity, width, height, refresh, hdr, TimeSpan.FromSeconds(6));
 
                 try
                 {
@@ -737,6 +786,10 @@ namespace GamingDisplayController
                 return RestoreAvailableDisplay("stale-transition-watchdog");
             }
 
+            // The timer may have queued this action during a slow HDR transition.
+            // Recheck under the operation lock instead of reapplying a completed switch.
+            if (IsTopologyCorrect(state)) return 0;
+
             string desired = DesiredIdentity(state.Mode);
             if (desired == "TV" || desired == "Alienware")
             {
@@ -860,7 +913,7 @@ namespace GamingDisplayController
             NativeMethods.DISPLAYCONFIG_SOURCE_MODE source = Modes[sourceIndex].sourceMode;
             NativeMethods.DISPLAYCONFIG_VIDEO_SIGNAL_INFO signal = Modes[targetIndex].targetMode.targetVideoSignalInfo;
             uint expectedWidth = requireNativeSource ? 5120U : 3840U;
-            if (Identity != "Alienware" || source.width != expectedWidth || source.height != 2160 ||
+            if (Identity != "Alienware" || !Hdr || source.width != expectedWidth || source.height != 2160 ||
                 signal.activeSize.cx != 5120 || signal.activeSize.cy != 2160 || !Is165Hz(signal.vSyncFreq) ||
                 !Is165Hz(Paths[0].targetInfo.refreshRate))
                 throw new InvalidOperationException("Expected AW3926QW native 5K2K/165 signal and the requested desktop size.");
@@ -896,6 +949,8 @@ namespace GamingDisplayController
             return Identity == other.Identity && Hdr == other.Hdr &&
                 a.sourceInfo.adapterId.Equals(b.sourceInfo.adapterId) && a.sourceInfo.id == b.sourceInfo.id &&
                 a.targetInfo.adapterId.Equals(b.targetInfo.adapterId) && a.targetInfo.id == b.targetInfo.id &&
+                a.targetInfo.outputTechnology == b.targetInfo.outputTechnology &&
+                (a.flags & NativeMethods.DISPLAYCONFIG_PATH_BOOST_REFRESH_RATE) == (b.flags & NativeMethods.DISPLAYCONFIG_PATH_BOOST_REFRESH_RATE) &&
                 a.targetInfo.rotation == b.targetInfo.rotation && a.targetInfo.scaling == b.targetInfo.scaling &&
                 a.targetInfo.refreshRate.Equals(b.targetInfo.refreshRate) &&
                 a.targetInfo.scanLineOrdering == b.targetInfo.scanLineOrdering &&
@@ -952,32 +1007,55 @@ namespace GamingDisplayController
 
         public static ActiveDisplayConfiguration ApplyCentered4K()
         {
-            ActiveDisplayConfiguration expected = CaptureActiveConfiguration().CreateCentered4K();
+            // HDR and target timing can settle after the GDI mode call returns. Never
+            // promote a transient SDR/native-mode snapshot into the expected 4K state.
+            ActiveDisplayConfiguration native = WaitForConfiguration(CaptureActiveConfiguration,
+                delegate(ActiveDisplayConfiguration value) { value.RequireCentered4K(true); }, TimeSpan.FromSeconds(6));
+            ActiveDisplayConfiguration expected = native.CreateCentered4K();
             ApplyConfiguration(expected);
             return expected;
         }
 
         public static void VerifyCentered4K(ActiveDisplayConfiguration expected = null)
         {
-            ActiveDisplayConfiguration actual = CaptureActiveConfiguration();
-            actual.RequireCentered4K(false);
-            if (expected != null && !expected.HasSamePresentation(actual))
-                throw new InvalidOperationException("Driver changed the requested centered desktop or native signal timings.");
+            WaitForConfiguration(CaptureActiveConfiguration, delegate(ActiveDisplayConfiguration actual)
+            {
+                actual.RequireCentered4K(false);
+                if (expected != null && !expected.HasSamePresentation(actual))
+                    throw new InvalidOperationException("Driver changed the requested centered desktop or native signal timings.");
+            }, TimeSpan.FromSeconds(6));
+        }
+
+        internal static ActiveDisplayConfiguration WaitForConfiguration(Func<ActiveDisplayConfiguration> capture,
+            Action<ActiveDisplayConfiguration> verify, TimeSpan timeout, Action wait = null)
+        {
+            Stopwatch timer = Stopwatch.StartNew();
+            Exception last = null;
+            do
+            {
+                try
+                {
+                    ActiveDisplayConfiguration current = capture();
+                    verify(current);
+                    return current;
+                }
+                catch (InvalidOperationException ex) { last = ex; }
+                catch (Win32Exception ex) { last = ex; }
+                if (timer.Elapsed >= timeout) break;
+                if (wait == null) Thread.Sleep(100); else wait();
+            } while (timer.Elapsed < timeout);
+            throw new InvalidOperationException("Timed out waiting for the exact source/target/HDR/scaling configuration.", last);
         }
 
         public static void RestoreConfiguration(ActiveDisplayConfiguration original)
         {
             ApplyConfiguration(original);
             SetHdr(original.Identity, original.Hdr);
-            int sourceIndex, targetIndex;
-            original.GetModeIndexes(out sourceIndex, out targetIndex);
-            NativeMethods.DISPLAYCONFIG_SOURCE_MODE source = original.Modes[sourceIndex].sourceMode;
-            NativeMethods.DISPLAYCONFIG_VIDEO_SIGNAL_INFO signal = original.Modes[targetIndex].targetMode.targetVideoSignalInfo;
-            int refresh = (int)Math.Round((double)signal.vSyncFreq.Numerator / signal.vSyncFreq.Denominator);
-            Verify(original.Identity, (int)source.width, (int)source.height, refresh, original.Hdr, TimeSpan.FromSeconds(6));
-            ActiveDisplayConfiguration actual = CaptureActiveConfiguration();
-            if (!original.HasSamePresentation(actual))
-                throw new InvalidOperationException("Original source, target signal, HDR or scaling was not restored exactly.");
+            WaitForConfiguration(CaptureActiveConfiguration, delegate(ActiveDisplayConfiguration actual)
+            {
+                if (!original.HasSamePresentation(actual))
+                    throw new InvalidOperationException("Original source, target signal, HDR or scaling was not restored exactly.");
+            }, TimeSpan.FromSeconds(6));
         }
 
         public static void RequireAdvertisedMode(string identity, int width, int height, int refresh)
@@ -1395,6 +1473,7 @@ namespace GamingDisplayController
         public const uint QDC_VIRTUAL_MODE_AWARE = 0x10;
         public const uint DISPLAYCONFIG_PATH_ACTIVE = 1;
         public const uint DISPLAYCONFIG_PATH_SUPPORT_VIRTUAL_MODE = 8;
+        public const uint DISPLAYCONFIG_PATH_BOOST_REFRESH_RATE = 0x10;
         public const int DISPLAYCONFIG_SCALING_CENTERED = 2;
         public const uint DISPLAYCONFIG_PATH_MODE_IDX_INVALID = 0xFFFFFFFF;
         public const uint SDC_USE_SUPPLIED_DISPLAY_CONFIG = 0x20;

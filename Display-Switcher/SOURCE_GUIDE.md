@@ -5,7 +5,7 @@ This folder contains the actual application source, not just a backup executable
 | Path | Role |
 |---|---|
 | src/DisplayController/DisplayController.cs | Console commands, tray UI, state persistence, Windows display/HDR APIs, Sunshine request handling and RTSS integration |
-| src/DisplayController/RecoveryTests.cs | Isolated recovery-policy checks |
+| src/DisplayController/RecoveryTests.cs | Isolated recovery, profile, snapshot/scaling and settling checks |
 | build.ps1 | Builds console DisplayController.exe and GUI DisplayControllerTray.exe from the same source |
 | test-recovery.ps1 | Compiles/runs the isolated policy checks; not a live display test |
 | tools/New-TrayIcon.ps1 | Icon asset generation/conversion source |
@@ -29,7 +29,10 @@ outputs/DisplayController, ignored by Git. Review/test the result before a separ
 Installed RTSS is required for caps, VDD for virtual output, and Sunshine for streaming.
 Do not run the old executable against a different monitor's IDs without adapting the source.
 
-The current source still targets the AW3423DW. See BASELINE_BACKUP.md for AW3926QW pending work.
+The current branch's source adds AW3926QW native, manual 330 Hz and centered-4K profiles.
+It is compiled/offline-checked only, not deployed or verified on hardware. See
+[WORK_IN_PROGRESS.md](WORK_IN_PROGRESS.md) and [the attended test plan](docs/AW3926QW-TEST-PLAN.md).
+[BASELINE_BACKUP.md](BASELINE_BACKUP.md) describes the unchanged old installed baseline.
 The supplied raster artwork was AI-assisted; the ICO conversion source does not reproduce the
 original image-generation model. It reuses the preserved image asset.
 

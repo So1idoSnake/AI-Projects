@@ -1,5 +1,9 @@
 # Gaming Display Controller Runbook
 
+Historical deployed-baseline runbook. The new AW3926QW source is not deployed;
+its profiles differ from the old monitor values below. Read [README.md](README.md)
+and [the attended test plan](docs/AW3926QW-TEST-PLAN.md) for the feature-branch source.
+
 Last verified: September 6, 2026
 
 ## Purpose

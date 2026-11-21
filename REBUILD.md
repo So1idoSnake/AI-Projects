@@ -21,7 +21,9 @@ Sign in through each app normally.
 Connect the monitor/TV. Inventory exact monitor IDs, supported resolutions, refresh rates,
 HDR and VRR support. The old controller's EDID IDs, installed paths and hardcoded monitor
 profile are specific to the original PC; review them before building or deploying.
-The AW3926QW 5K2K/330Hz/4K profile changes have NOT been implemented.
+The AW3926QW 5K2K/330Hz/4K profile changes exist in the feature-branch source and
+pass isolated checks, but are NOT deployed or verified on hardware. Follow
+[the attended test plan](Display-Switcher/docs/AW3926QW-TEST-PLAN.md) before deployment.
 
 ## 3. Build and configure the display project
 

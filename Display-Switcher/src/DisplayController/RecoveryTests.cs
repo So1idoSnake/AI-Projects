@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 
 namespace GamingDisplayController
@@ -35,6 +36,7 @@ namespace GamingDisplayController
             checks++;
             CheckMonitorProfiles();
             CheckCenteredPlan();
+            CheckPresentationSettling();
             CheckStreamRequests();
             Console.WriteLine("PASS: " + checks + " recovery/profile/scaling checks (no display, HDR, RTSS or state-file changes).");
             return 0;
@@ -136,6 +138,29 @@ namespace GamingDisplayController
             Assert(!original.HasSamePresentation(altered), "Rollback verification ignored rotation.");
             altered = original.Clone(); altered.Hdr = false;
             Assert(!original.HasSamePresentation(altered), "Rollback verification ignored HDR state.");
+            altered = original.Clone(); altered.Paths[0].flags ^= NativeMethods.DISPLAYCONFIG_PATH_BOOST_REFRESH_RATE;
+            Assert(!original.HasSamePresentation(altered), "Presentation verification ignored dynamic-refresh behavior.");
+            altered = original.Clone(); altered.Paths[0].targetInfo.outputTechnology++;
+            Assert(!original.HasSamePresentation(altered), "Presentation verification ignored output technology.");
+            altered = original.Clone();
+            altered.Modes = new NativeMethods.DISPLAYCONFIG_MODE_INFO[] { original.Modes[1], original.Modes[0] };
+            altered.Paths[0].sourceInfo.modeInfoIdx = 1; altered.Paths[0].targetInfo.modeInfoIdx = 0;
+            Assert(original.HasSamePresentation(altered), "Valid mode-array reordering changed presentation identity.");
+            Assert(altered.CreateCentered4K().Modes[1].sourceMode.width == 3840, "Centering used a stale source index.");
+            Assert(Controller.SnapshotMatchesState(original, new ControllerState { Mode = DisplayMode.Alienware }), "Matching native rollback snapshot rejected.");
+            Assert(!Controller.SnapshotMatchesState(original, new ControllerState { Mode = DisplayMode.Tv }), "Saved TV and actual monitor were treated as the same rollback.");
+            Assert(Controller.SnapshotMatchesState(centered, new ControllerState { Mode = DisplayMode.Alienware4K }), "Matching centered rollback snapshot rejected.");
+            altered = centered.Clone(); altered.Paths[0].targetInfo.scaling = 3;
+            Assert(!Controller.SnapshotMatchesState(altered, new ControllerState { Mode = DisplayMode.Alienware4K }), "Stretched 4K accepted for exact rollback.");
+            altered = original.Clone();
+            altered.Modes[0].sourceMode.width = 2560; altered.Modes[0].sourceMode.height = 1080;
+            altered.Modes[1].targetMode.targetVideoSignalInfo.vSyncFreq = new NativeMethods.DISPLAYCONFIG_RATIONAL { Numerator = 330, Denominator = 1 };
+            altered.Paths[0].targetInfo.refreshRate = altered.Modes[1].targetMode.targetVideoSignalInfo.vSyncFreq;
+            Assert(Controller.SnapshotMatchesState(altered, new ControllerState { Mode = DisplayMode.Alienware330 }), "Matching optional 330 rollback snapshot rejected.");
+            altered.Paths[0].targetInfo.refreshRate = original.Paths[0].targetInfo.refreshRate;
+            Assert(!Controller.SnapshotMatchesState(altered, new ControllerState { Mode = DisplayMode.Alienware330 }), "Mismatched signal/path refresh accepted for rollback.");
+            altered.Paths[0].targetInfo.refreshRate.Denominator = 0;
+            Assert(!Controller.SnapshotMatchesState(altered, new ControllerState { Mode = DisplayMode.Alienware330 }), "Invalid path refresh accepted for rollback.");
             ActiveDisplayConfiguration bad = NativeSnapshot();
             bad.Paths[0].sourceInfo.modeInfoIdx = uint.MaxValue;
             Reject(delegate { bad.CreateCentered4K(); }, "Invalid source index accepted.");
@@ -151,6 +176,34 @@ namespace GamingDisplayController
             Reject(delegate { bad.CreateCentered4K(); }, "Nonnative target signal accepted.");
             bad = centered.Clone(); bad.Paths[0].targetInfo.scaling = 3;
             Reject(delegate { bad.RequireCentered4K(false); }, "Driver's stretched scaling accepted as centered.");
+            bad = NativeSnapshot(); bad.Hdr = false;
+            Reject(delegate { bad.CreateCentered4K(); }, "Transient SDR snapshot accepted for an HDR-on centered profile.");
+        }
+
+        private static void CheckPresentationSettling()
+        {
+            ActiveDisplayConfiguration native = NativeSnapshot();
+            ActiveDisplayConfiguration stale = native.Clone(); stale.Hdr = false;
+            int reads = 0;
+            ActiveDisplayConfiguration result = DisplayManager.WaitForConfiguration(delegate
+            {
+                reads++;
+                if (reads == 1) throw new Win32Exception(122);
+                return reads == 2 ? stale : native;
+            }, delegate(ActiveDisplayConfiguration value) { value.RequireCentered4K(true); }, TimeSpan.FromSeconds(1), delegate { });
+            Assert(reads == 3 && object.ReferenceEquals(native, result), "Transient capture/HDR errors were not retried to the matching configuration.");
+            reads = 0;
+            Reject(delegate
+            {
+                DisplayManager.WaitForConfiguration(delegate { reads++; return stale; },
+                    delegate(ActiveDisplayConfiguration value) { value.RequireCentered4K(true); }, TimeSpan.Zero, delegate { });
+            }, "Persistent HDR mismatch did not terminate.");
+            Assert(reads == 1, "Zero-timeout verification exceeded one capture.");
+            Reject(delegate
+            {
+                DisplayManager.WaitForConfiguration(delegate { throw new Win32Exception(122); },
+                    delegate(ActiveDisplayConfiguration value) { value.RequireCentered4K(true); }, TimeSpan.Zero, delegate { });
+            }, "Persistent capture errors did not terminate.");
         }
 
         private static void CheckStreamRequests()
