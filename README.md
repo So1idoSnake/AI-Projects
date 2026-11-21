@@ -2,7 +2,7 @@
 
 Source code and rebuild notes for the Windows gaming PC work completed with AI assistance.
 
-Start with [REBUILD.md](REBUILD.md), [PROJECT_INDEX.md](PROJECT_INDEX.md), and [SHARING.md](SHARING.md).
+Start with [REBUILD.md](REBUILD.md), [PROJECT_INDEX.md](PROJECT_INDEX.md), [SHARING.md](SHARING.md), and [SYNC.md](SYNC.md).
 Each project has a README and AGENTS.md. A folder may contain research or a runbook rather than a completed application; its README identifies that distinction.
 
 | Project | Purpose |
