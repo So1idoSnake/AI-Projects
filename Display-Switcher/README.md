@@ -14,11 +14,11 @@ Read [WORK_IN_PROGRESS.md](WORK_IN_PROGRESS.md) for the source checkpoint and
 
 | Selection | Desktop mode | HDR intent | RTSS cap | Selection policy |
 |---|---|---|---|---|
-| TV | 3840x2160 / 120 Hz | On | 117 | Existing default; CX or C2/soundbar |
+| TV | 3840x2160 / 120 Hz | On | 117 | Manual selection; CX or C2/soundbar |
 | Monitor / Alienware | 5120x2160 / 165 Hz | On | 162 | Standard monitor selection and monitor recovery candidate |
 | Monitor 330 | 2560x1080 / 330 Hz | On | 327 | User selects hardware330; tray follows while monitor selected |
 | Monitor 4K | 3840x2160 / 165 Hz, centered | On | 162 | Explicit manual selection only |
-| Manual/safety VDD | 1920x1080 / 120 Hz | Off | 120 | Existing behavior |
+| Manual/safety VDD | 1920x1080 / 120 Hz | Off | 120 | Manual, or temporary while awaiting native monitor |
 | Sunshine stream | Client-requested 1080p or 4K / 60, 90, 120 Hz | Client request | Requested FPS | Existing behavior |
 
 AW3926QW uses `DELA2F9` in native mode and `DELA2FA` in DisplayPort DUAL/330 mode.
@@ -63,8 +63,8 @@ It avoids resetting resolution when Windows already selected the correct mode.
 Set Other Modes Off to return to stock native; wait about eight seconds for synchronization.
 The explicit330 tray/CLI choice remains available but requires hardware330 first.
 The controller does not operate the OSD or invent a custom timing.
-If native is unavailable during recovery, the existing TV/native-monitor/VDD
-fallback sequence can reach VDD; it does not select an optional resolution instead.
+If native is unavailable during recovery, VDD is temporary while the controller
+waits for native to return; it never selects TV or an optional resolution instead.
 
 The intended 4K approach is NVIDIA/GPU centering with the monitor remaining in
 native mode. The implementation requests centered 3840x2160 inside an existing
@@ -92,15 +92,33 @@ No DV preference was changed by source development. The existing Windows
 advanced-color toggle enables HDR but cannot choose or verify HDR10 versus DV.
 DV automation and metadata handling are out of scope. DSC remains accepted.
 
-## Defaults preserved
+## Automatic recovery and manual selection
 
-TV remains the default physical profile. Recovery still tries TV, native Alienware,
-then VDD. A correctly selected monitor does not switch to a newly available TV.
+At the user's request on 2026-11-21, all automatic recovery, including Moonlight
+Stop Stream, now targets native Alienware. It tries the native monitor, then VDD
+as temporary safety output. TV is excluded from automatic recovery, regardless
+of which HDMI/soundbar route reports available.
+
+When the monitor is unavailable or cannot be activated, state Vdd plus
+`AwaitingMonitor=True` persists the target, clears finished-stream metadata and
+survives restart. The tray waits for native availability to settle, retries, and
+returns to 5K2K/165/HDR/cap162. A stable virtual output is not repeatedly reset.
+Windows cannot activate a physically disconnected display or bypass a protected
+desktop; pending intent is retained until normal activation becomes possible.
+If hardware330 remains selected, turn Other Modes Off so native is advertised.
+
+A successful manual TV, monitor or virtual selection cancels pending recovery.
+A new stream also cancels it, so queued recovery cannot interrupt that stream.
+Explicit virtual output stays virtual; it is distinct from temporary recovery VDD.
+A correctly selected monitor does not switch to a newly available TV.
 Manual optional profiles remain selected on reapply; they are never automatic
 recovery candidates. Existing rollback can temporarily restore a previously chosen
-optional mode between failed recovery attempts.
+profile after a failed explicit selection; automatic recovery establishes VDD
+as its rollback state so it cannot roll back into an off HDMI endpoint.
 
-Topology recovery retains its existing timers and priority. The user-requested exception
+Display-loss detection retains its existing five-second threshold. Pending monitor return
+uses stable observations and a six-second retry cooldown; temporary-VDD repair waits five
+seconds. The other user-requested exception
 is monitor hardware-mode synchronization: two stable observations at least two seconds
 apart follow a native/DUAL change, with a six-second retry cooldown. Work rechecks current
 state under the operation lock; TV, VDD, Stream and Transition selections are excluded.
@@ -111,9 +129,9 @@ Streaming remains owned by Sunshine prep/undo; no socket inference.
 
 Sunshine still reads `SUNSHINE_CLIENT_WIDTH`, `HEIGHT`, `FPS`, `HDR`, accepts 1080p
 and 4K at 60/90/120, and uses the requested FPS cap and HDR state. Stop Stream
-uses the existing recovery order. Audio selection remains Sunshine's responsibility.
-No Sunshine config, audio, startup, firmware, driver, DV, or TV auto-return change
-is included in this source update.
+uses native-monitor recovery with temporary VDD as described above. Audio selection
+remains Sunshine's responsibility. No Sunshine configuration, audio, startup,
+firmware, driver or Dolby Vision preference was changed by this recovery update.
 
 ## Build, checks and deployment
 
@@ -121,7 +139,7 @@ See [SOURCE_GUIDE.md](SOURCE_GUIDE.md) for source paths, compiler and RTSS depen
 `./build.ps1` compiles console/tray into ignored `outputs/DisplayController`.
 `./test-recovery.ps1` runs isolated checks using synthetic configurations and
 process-local test variables; it does not call the live display/HDR/RTSS APIs or
-write controller state. The latest source pass has 136 checks passing and both
+write controller state. The latest source pass has 164 checks passing and both
 application builds compiling. The build is deployed for attended manual testing.
 
 The original September/October deployed setup passed its historical staged tests;

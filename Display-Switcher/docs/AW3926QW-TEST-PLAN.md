@@ -106,7 +106,11 @@ After manual profiles pass, enable one tray instance under supervision. Confirm:
   no hardware toggle can take over TV/VDD/Stream. Native EDID preserves manual4K.
 - A slow HDR/mode transition does not trigger repeated switching from stale queued
   watchdog work after the desired topology is already correct.
-- Power loss/disconnect uses existing TV -> native monitor -> VDD priority.
+- All automatic recovery, including Stop Stream, targets native monitor -> temporary VDD,
+  never TV. While native is unavailable, verify Vdd state with AwaitingMonitor=True.
+  After native returns, verify automatic 5K2K/165/HDR/cap162 and AwaitingMonitor=False.
+- Pending return survives restart and does not reset a stable virtual output repeatedly.
+  Manual TV/virtual selection and a new stream must cancel pending native return.
 - Unsupported modes or rejected centering leave the original selected profile
   restored, with matching state/cap, or produce a clear logged failure.
 - A finished stream clears Stream metadata and allows a fresh subsequent launch.
@@ -115,8 +119,10 @@ After manual profiles pass, enable one tray instance under supervision. Confirm:
 
 Use Moonlight Stop Stream and start a fresh application session after changing
 client settings. Test default/native recovery after optional selections. If Dell
-330 hardware mode prevents native recovery while the TV is unavailable, verify
-the VDD safety path and document the manual OSD return needed.
+330 hardware mode prevents native recovery, verify
+the temporary VDD safety path and the manual OSD Off return needed. TV availability
+must not change this recovery destination. A no-client stream-end invocation is only
+a handler check; real handheld/Xbox Stop Stream still requires a connection test.
 
 No timer/cap/VRR/HDR behavior is inferred solely from a status command. A reboot
 startup test is a later user-controlled step, not part of source verification.

@@ -172,6 +172,7 @@ namespace GamingDisplayController
     {
         public DisplayMode Mode = DisplayMode.Tv;
         public DisplayMode TransitionDestination = DisplayMode.Tv;
+        public bool AwaitingMonitor;
         public string StreamClient = "";
         public int StreamWidth;
         public int StreamHeight;
@@ -183,6 +184,15 @@ namespace GamingDisplayController
         public ControllerState Clone()
         {
             return (ControllerState)MemberwiseClone();
+        }
+
+        internal ControllerState ForProfile(DisplayMode mode, bool awaitingMonitor = false)
+        {
+            ControllerState completed = Clone();
+            completed.Mode = mode; completed.TransitionDestination = mode;
+            completed.AwaitingMonitor = mode == DisplayMode.Vdd && awaitingMonitor;
+            if (mode != DisplayMode.Stream) completed.ClearStreamMetadata();
+            return completed;
         }
 
         public void ClearStreamMetadata()
@@ -225,6 +235,7 @@ namespace GamingDisplayController
                     if (Enum.TryParse<DisplayMode>(value, true, out parsed)) state.TransitionDestination = parsed;
                 }
                 else if (key.Equals("StreamClient", StringComparison.OrdinalIgnoreCase)) state.StreamClient = value;
+                else if (key.Equals("AwaitingMonitor", StringComparison.OrdinalIgnoreCase)) bool.TryParse(value, out state.AwaitingMonitor);
                 else if (key.Equals("StreamWidth", StringComparison.OrdinalIgnoreCase)) int.TryParse(value, out state.StreamWidth);
                 else if (key.Equals("StreamHeight", StringComparison.OrdinalIgnoreCase)) int.TryParse(value, out state.StreamHeight);
                 else if (key.Equals("StreamFps", StringComparison.OrdinalIgnoreCase)) int.TryParse(value, out state.StreamFps);
@@ -242,6 +253,7 @@ namespace GamingDisplayController
             {
                 "Mode=" + Mode,
                 "TransitionDestination=" + TransitionDestination,
+                "AwaitingMonitor=" + AwaitingMonitor,
                 "StreamClient=" + StreamClient,
                 "StreamWidth=" + StreamWidth.ToString(CultureInfo.InvariantCulture),
                 "StreamHeight=" + StreamHeight.ToString(CultureInfo.InvariantCulture),
@@ -396,14 +408,49 @@ namespace GamingDisplayController
 
     internal static class DisplayRecovery
     {
+        internal static bool NativeMonitorAvailable(IEnumerable<DisplayTarget> displays)
+        {
+            return displays.Any(delegate(DisplayTarget d) {
+                return d.Available && d.HardwareMonitorMode == DisplayMode.Alienware;
+            });
+        }
+
+        internal static bool IsAwaitingMonitor(ControllerState state)
+        {
+            return state.Mode == DisplayMode.Vdd && state.AwaitingMonitor;
+        }
+
         public static int Restore(Func<DisplayMode, bool> available, Func<DisplayMode, int> apply)
         {
-            foreach (DisplayMode mode in new DisplayMode[] { DisplayMode.Tv, DisplayMode.Alienware, DisplayMode.Vdd })
+            foreach (DisplayMode mode in new DisplayMode[] { DisplayMode.Alienware, DisplayMode.Vdd })
             {
                 if (!available(mode)) continue;
                 if (apply(mode) == 0) return 0;
             }
             return 10;
+        }
+    }
+
+    internal sealed class MonitorReturnTracker
+    {
+        private string pending;
+        private DateTime since;
+        private DateTime nextAttempt;
+
+        internal bool Observe(ControllerState state, IList<DisplayTarget> displays, DateTime now)
+        {
+            if (!DisplayRecovery.IsAwaitingMonitor(state)) { pending = null; return false; }
+            bool native = DisplayRecovery.NativeMonitorAvailable(displays);
+            string candidate = native ? "native" : Controller.IsTopologyCorrect(state, displays) ? null : "virtual";
+            if (candidate == null) { pending = null; return false; }
+            if (pending != candidate || now < since)
+            {
+                pending = candidate; since = now; nextAttempt = now;
+                return false;
+            }
+            if (now - since < TimeSpan.FromSeconds(native ? 2 : 5) || now < nextAttempt) return false;
+            nextAttempt = now.AddSeconds(6);
+            return true;
         }
     }
 
@@ -489,6 +536,7 @@ namespace GamingDisplayController
             {
                 StringBuilder text = new StringBuilder();
                 text.AppendLine("Controller state: " + state.Mode);
+                if (state.AwaitingMonitor) text.AppendLine("Recovery target: native Alienware (waiting; virtual display is temporary)");
                 if (state.Mode == DisplayMode.Stream)
                 {
                     text.AppendLine("Stream: " + state.StreamClient + " " + state.StreamWidth + "x" + state.StreamHeight + "@" + state.StreamFps + " HDR=" + state.StreamHdr);
@@ -511,7 +559,8 @@ namespace GamingDisplayController
             }
 
             StringBuilder result = new StringBuilder();
-            result.Append("{\"state\":\"").Append(EscapeJson(state.Mode.ToString())).Append("\",\"displays\":[");
+            result.Append("{\"state\":\"").Append(EscapeJson(state.Mode.ToString())).Append("\",\"awaitingMonitor\":")
+                .Append(state.AwaitingMonitor ? "true" : "false").Append(",\"displays\":[");
             bool first = true;
             foreach (DisplayTarget display in displays.Where(delegate(DisplayTarget d) { return d.Active || d.Available; }))
             {
@@ -538,7 +587,7 @@ namespace GamingDisplayController
             return value.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\r", "\\r").Replace("\n", "\\n");
         }
 
-        public static int SetMode(DisplayMode mode, bool persist, string reason)
+        public static int SetMode(DisplayMode mode, bool persist, string reason, bool awaitingMonitor = false)
         {
             if (mode == DisplayMode.Stream || mode == DisplayMode.Transition) throw new ArgumentException("Use stream-start for Stream mode.");
 
@@ -564,7 +613,7 @@ namespace GamingDisplayController
                     throw new ArgumentOutOfRangeException("mode");
             }
 
-            return ApplyProfile(mode, identity, width, height, refresh, hdr, limit, persist, reason);
+            return ApplyProfile(mode, identity, width, height, refresh, hdr, limit, persist, reason, awaitingMonitor);
         }
 
         internal static bool SnapshotMatchesState(ActiveDisplayConfiguration snapshot, ControllerState state)
@@ -605,7 +654,7 @@ namespace GamingDisplayController
             catch (InvalidOperationException) { return false; }
         }
 
-        private static int ApplyProfile(DisplayMode finalMode, string identity, int width, int height, int refresh, bool hdr, int limit, bool persist, string reason)
+        private static int ApplyProfile(DisplayMode finalMode, string identity, int width, int height, int refresh, bool hdr, int limit, bool persist, string reason, bool awaitingMonitor = false)
         {
             ControllerState original = ControllerState.Load();
             // Source/target separation and scaling need an exact snapshot for rollback.
@@ -639,6 +688,7 @@ namespace GamingDisplayController
             ControllerState transition = original.Clone();
             transition.Mode = DisplayMode.Transition;
             transition.TransitionDestination = finalMode;
+            transition.AwaitingMonitor = awaitingMonitor;
             transition.Save();
             Logger.Info("Transition requested: " + identity + " " + width + "x" + height + "@" + refresh + " HDR=" + hdr + " reason=" + reason);
 
@@ -671,13 +721,7 @@ namespace GamingDisplayController
                     Console.Error.WriteLine("Warning: display profile is active, but RTSS cap failed: " + capError.Message);
                 }
 
-                ControllerState completed = ControllerState.Load();
-                completed.Mode = finalMode;
-                completed.TransitionDestination = finalMode;
-                if (finalMode != DisplayMode.Stream)
-                {
-                    completed.ClearStreamMetadata();
-                }
+                ControllerState completed = ControllerState.Load().ForProfile(finalMode, awaitingMonitor);
                 if (persist) completed.Save();
                 Logger.Info("Transition verified: " + finalMode);
                 Console.WriteLine("Active profile: " + finalMode + " (" + width + "x" + height + "@" + refresh + ", HDR=" + hdr + ", cap=" + limit + ")");
@@ -775,6 +819,7 @@ namespace GamingDisplayController
 
             ControllerState streaming = ControllerState.Load();
             streaming.Mode = DisplayMode.Stream;
+            streaming.AwaitingMonitor = false;
             streaming.TransitionDestination = DisplayMode.Stream;
             streaming.StreamClient = request.ClientName;
             streaming.StreamWidth = request.Width;
@@ -789,48 +834,74 @@ namespace GamingDisplayController
 
         public static int StreamEnd()
         {
-            Logger.Info("Stream end requested; restoring TV, Alienware, or VDD after settle delay.");
+            Logger.Info("Stream end requested; restoring native Alienware, or temporary VDD while waiting for it, after settle delay.");
             Thread.Sleep(3000);
             return RestoreAvailableDisplay("stream-end");
         }
 
         private static int RestoreAvailableDisplay(string reason)
         {
+            // All automatic recovery targets native Alienware. Establish a temporary
+            // VDD rollback state first, so failed recovery can never reselect a powered-off
+            // HDMI endpoint or restore a finished Stream state. This intent survives reboot.
+            ControllerState waiting = ControllerState.Load().ForProfile(DisplayMode.Vdd, true);
+            waiting.Save();
+            Logger.Info("Recovery target is native Alienware; VDD is temporary; TV is manual-only. reason=" + reason);
             int result = DisplayRecovery.Restore(
                 delegate(DisplayMode mode)
                 {
                     string identity = DesiredIdentity(mode);
-                    bool available = DisplayManager.EnumerateAllTargets().Any(delegate(DisplayTarget d) { return d.Identity == identity && d.Available; });
+                    List<DisplayTarget> displays = DisplayManager.EnumerateAllTargets();
+                    bool available = mode == DisplayMode.Alienware ? DisplayRecovery.NativeMonitorAvailable(displays) :
+                        displays.Any(delegate(DisplayTarget d) { return d.Identity == identity && d.Available; });
                     if (!available) Logger.Warning("Recovery skipped unavailable display: " + identity);
                     return available;
                 },
                 delegate(DisplayMode mode)
                 {
-                    int applied = SetMode(mode, true, reason);
+                    int applied = SetMode(mode, true, reason, mode == DisplayMode.Vdd);
                     if (applied != 0) Logger.Warning("Recovery could not apply " + mode + "; trying the next display.");
                     return applied;
                 });
 
             if (result != 0)
             {
-                // Sunshine has finished this stream. A rollback to its VDD must
-                // not leave the next launch blocked as an already active stream.
-                ControllerState state = ControllerState.Load();
-                if (state.Mode == DisplayMode.Stream || state.Mode == DisplayMode.Transition)
-                {
-                    state.Mode = DisplayMode.Vdd;
-                    state.TransitionDestination = DisplayMode.Vdd;
-                    state.ClearStreamMetadata();
-                    state.Save();
-                }
-                Logger.Warning("Display recovery failed; cleared any finished stream state and retained the rollback topology.");
+                ControllerState.Load().ForProfile(DisplayMode.Vdd, true).Save();
+                Logger.Warning("Recovery could not activate monitor or VDD; retaining pending native-monitor target for retry.");
             }
             return result;
+        }
+
+        public static int RetryPendingMonitor()
+        {
+            try
+            {
+                ControllerState state = ControllerState.Load();
+                if (!DisplayRecovery.IsAwaitingMonitor(state)) return 0;
+                List<DisplayTarget> displays = DisplayManager.EnumerateAllTargets();
+                if (DisplayRecovery.NativeMonitorAvailable(displays))
+                {
+                    if (SetMode(DisplayMode.Alienware, true, "pending-monitor-return") == 0) return 0;
+                    Logger.Warning("Native monitor return could not be applied yet; retaining temporary VDD and retry intent.");
+                }
+                // Recheck after a failed activation. Do not repeatedly reset an already
+                // correct virtual output, or abandon the target when the monitor is off.
+                state = ControllerState.Load();
+                if (DisplayRecovery.IsAwaitingMonitor(state) && !IsTopologyCorrect(state))
+                    SetMode(DisplayMode.Vdd, true, "pending-monitor-safety", true);
+                return 0; // Waiting/retrying is expected, not a repeating failure balloon.
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Pending native-monitor recovery will retry", ex);
+                return 0;
+            }
         }
 
         public static int Reapply()
         {
             ControllerState state = ControllerState.Load();
+            if (DisplayRecovery.IsAwaitingMonitor(state)) return RetryPendingMonitor();
             if (state.Mode == DisplayMode.Stream)
             {
                 return ApplyProfile(DisplayMode.Stream, "VDD", state.StreamWidth, state.StreamHeight, state.StreamFps, state.StreamHdr, state.StreamFps, true, "reapply");
@@ -890,6 +961,7 @@ namespace GamingDisplayController
         public static int WatchdogRecover()
         {
             ControllerState state = ControllerState.Load();
+            if (DisplayRecovery.IsAwaitingMonitor(state)) return RetryPendingMonitor();
             if (state.Mode == DisplayMode.Transition)
             {
                 return RestoreAvailableDisplay("stale-transition-watchdog");
@@ -1619,6 +1691,7 @@ namespace GamingDisplayController
         private readonly Mutex singleton;
         private DateTime topologyWrongSince = DateTime.MinValue;
         private readonly MonitorHardwareTracker hardwareTracker = new MonitorHardwareTracker();
+        private readonly MonitorReturnTracker returnTracker = new MonitorReturnTracker();
 
         public TrayApplicationContext()
         {
@@ -1702,6 +1775,7 @@ namespace GamingDisplayController
             try
             {
                 ControllerState state = ControllerState.Load();
+                icon.Text = state.AwaitingMonitor ? "Display Controller - waiting for Alienware" : "Gaming Display Controller";
                 if (state.Mode == DisplayMode.Transition)
                 {
                     if (topologyWrongSince == DateTime.MinValue) topologyWrongSince = DateTime.UtcNow;
@@ -1714,12 +1788,19 @@ namespace GamingDisplayController
                 }
 
                 List<DisplayTarget> displays = DisplayManager.EnumerateAllTargets();
+                if (DisplayRecovery.IsAwaitingMonitor(state))
+                {
+                    topologyWrongSince = DateTime.MinValue;
+                    if (returnTracker.Observe(state, displays, DateTime.UtcNow)) RunAction(Controller.RetryPendingMonitor);
+                    return;
+                }
+                returnTracker.Observe(state, displays, DateTime.UtcNow);
                 bool hardwarePending;
                 DisplayMode? synchronize = hardwareTracker.Observe(state, displays, DateTime.UtcNow, out hardwarePending);
                 if (hardwarePending)
                 {
                     // Give a stable OSD choice priority over reapplying a now stale
-                    // monitor timing. Ordinary TV/stream recovery keeps its old policy.
+                    // monitor timing. Automatic recovery uses the native-monitor target.
                     topologyWrongSince = DateTime.MinValue;
                     if (synchronize.HasValue)
                     {
@@ -1742,7 +1823,7 @@ namespace GamingDisplayController
 
                 // Sunshine owns session lifetime and reliably runs stream-end on
                 // Moonlight disconnect. The tray only enforces the saved display
-                // topology; inferring a session from Sunshine's background UDP
+                // topology and explicit hardware choices; inferring a session from Sunshine's background UDP
                 // sockets can produce false positives or false restores.
             }
             catch (Exception ex) { Logger.Error("Tray watchdog error", ex); }

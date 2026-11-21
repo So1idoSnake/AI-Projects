@@ -13,6 +13,11 @@ Create fresh Sunshine credentials/pairings.
 Do not copy old authentication files or overwrite installed config without comparing supported options.
 
 The current explicit prep/undo commands invoke DisplayController.exe stream-start / stream-end.
+As explicitly requested on 2026-11-21, the current controller's stream-end recovery targets
+native Alienware, using VDD temporarily if native is unavailable and restoring the monitor
+when it returns. It no longer chooses TV automatically. Client mode requests and Sunshine
+audio ownership are unchanged. See [current controller behavior](../Display-Switcher/README.md)
+and [attended results](../Display-Switcher/docs/AW3926QW-ATTENDED-RESULTS.md).
 The client provides SUNSHINE_CLIENT_WIDTH, HEIGHT, FPS and HDR. Supported stream requests are
 1080p/4K at 60, 90 or 120 FPS. HEVC mode 3 permits 10-bit HDR; NVENC preset 4 was retained.
 A fixed stale display GUID previously broke detection and should not be restored.
@@ -24,7 +29,8 @@ the new driver version before applying this sample. It is not an installer or li
 
 The September setup passed real handheld 1080p/120 SDR and Xbox 4K/120 HDR tests, including audio.
 On October 31 a missing-TV restore bug was fixed: TV -> Alienware -> VDD fallback, clear completed
-stream metadata even if recovery fails. See docs/HOST-FALLBACK-CHANGE.md for exact scope.
+stream metadata even if recovery fails. That historical TV-first priority is superseded
+by the monitor-target policy above. See docs/HOST-FALLBACK-CHANGE.md for historical scope.
 Changing Moonlight settings while resuming an existing application can bypass prep; use Stop Stream
 and start a fresh session when testing client-mode changes.
 Host virtual-display refresh does not prove client VRR operation.

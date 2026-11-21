@@ -163,6 +163,33 @@ Dell built-in 4K mode or NVIDIA scaling-setting change was needed for this resul
 - No driver, power setting, game configuration or fallback-policy change was made
   during this investigation. The test left the game open on the monitor.
 
+## Monitor-target recovery policy — deployed, off/on check pending
+
+- User explicitly requested native-monitor fallback even when the monitor is unavailable,
+  and confirmed it should apply to all recovery including Moonlight Stop Stream.
+  Either TV remains manually selectable; a successful manual choice cancels pending return.
+- User clarified that both TVs have soundbars: one HDMI route uses soundbar HDMI2.1
+  passthrough; the other goes directly to TV and uses eARC for soundbar audio. Different
+  EDID/power behavior makes HDMI availability unsuitable as the automatic fallback choice.
+- Automatic recovery now tries only native Alienware, then temporary VDD. Before applying,
+  it establishes a VDD rollback state with AwaitingMonitor=True and clears completed
+  stream metadata, so a failed recovery cannot roll back to TV or a finished Stream state.
+- The flag is persisted and shown in status. The tray retries after native availability
+  settles; it does not continuously reset a correctly selected safety VDD. Manual
+  TV/monitor/VDD selection or a new stream cancels the pending monitor return.
+- Native hardware mode is required; an attached DUAL330 identity does not cause automatic
+  optional330 selection. Turn Other Modes Off to allow native recovery.
+- Both EXEs compiled; 164 isolated checks passed for monitor-first recovery, exclusion of
+  available TV, fallback failures, pending-state parsing/cloning, finished-stream cleanup,
+  manual/stream cancellation, settling and retry behavior.
+- Prior installed controller/data and RTSS global profile are privately backed up at
+  `local-private/display-switcher/pre-monitor-first-2026-11-21-113613`.
+- Deployed and started one tray at 11:36:14. Native5120x2160/165/HDR remained selected.
+- Invoked the stream-end handler with no client connected: at 11:36:52 it selected native
+  monitor, HDR/cap162, AwaitingMonitor=False, TV/VDD inactive. This is not a real-client
+  Stop Stream test. Physical unavailable/wake return remains pending user action.
+- No drivers, power options, Sunshine settings or audio routing were changed.
+
 ## Remaining
 
 - Physical power-loss/fallback behavior and reboot startup.

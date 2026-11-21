@@ -11,13 +11,14 @@ namespace GamingDisplayController
 
         public static int Main()
         {
-            Check("TV remains preferred", new DisplayMode[] { DisplayMode.Tv, DisplayMode.Alienware, DisplayMode.Vdd }, new DisplayMode[0], "Tv", 0);
-            Check("missing TV uses monitor", new DisplayMode[] { DisplayMode.Alienware, DisplayMode.Vdd }, new DisplayMode[0], "Alienware", 0);
-            Check("failed TV uses monitor", new DisplayMode[] { DisplayMode.Tv, DisplayMode.Alienware, DisplayMode.Vdd }, new DisplayMode[] { DisplayMode.Tv }, "Tv,Alienware", 0);
+            Check("native monitor is always preferred", new DisplayMode[] { DisplayMode.Tv, DisplayMode.Alienware, DisplayMode.Vdd }, new DisplayMode[0], "Alienware", 0);
+            Check("missing TV still uses monitor", new DisplayMode[] { DisplayMode.Alienware, DisplayMode.Vdd }, new DisplayMode[0], "Alienware", 0);
+            Check("available TV is never a recovery candidate", new DisplayMode[] { DisplayMode.Tv, DisplayMode.Vdd }, new DisplayMode[0], "Vdd", 0);
             Check("missing physical displays uses VDD", new DisplayMode[] { DisplayMode.Vdd }, new DisplayMode[0], "Vdd", 0);
-            Check("failed physical displays uses VDD", new DisplayMode[] { DisplayMode.Tv, DisplayMode.Alienware, DisplayMode.Vdd }, new DisplayMode[] { DisplayMode.Tv, DisplayMode.Alienware }, "Tv,Alienware,Vdd", 0);
+            Check("failed native monitor uses VDD not TV", new DisplayMode[] { DisplayMode.Tv, DisplayMode.Alienware, DisplayMode.Vdd }, new DisplayMode[] { DisplayMode.Alienware }, "Alienware,Vdd", 0);
             Check("missing TV and failed monitor uses VDD", new DisplayMode[] { DisplayMode.Alienware, DisplayMode.Vdd }, new DisplayMode[] { DisplayMode.Alienware }, "Alienware,Vdd", 0);
-            Check("all failures remain an error", new DisplayMode[] { DisplayMode.Tv, DisplayMode.Alienware, DisplayMode.Vdd }, new DisplayMode[] { DisplayMode.Tv, DisplayMode.Alienware, DisplayMode.Vdd }, "Tv,Alienware,Vdd", 10);
+            Check("all failures never select available TV", new DisplayMode[] { DisplayMode.Tv, DisplayMode.Alienware, DisplayMode.Vdd }, new DisplayMode[] { DisplayMode.Alienware, DisplayMode.Vdd }, "Alienware,Vdd", 10);
+            Check("TV alone cannot satisfy monitor recovery", new DisplayMode[] { DisplayMode.Tv }, new DisplayMode[0], "", 10);
             Check("no displays remains an error", new DisplayMode[0], new DisplayMode[0], "", 10);
 
             ControllerState state = new ControllerState();
@@ -36,6 +37,7 @@ namespace GamingDisplayController
             checks++;
             CheckMonitorProfiles();
             CheckHardwareModeTracking();
+            CheckPendingMonitorRecovery();
             CheckCenteredPlan();
             CheckPresentationSettling();
             CheckStreamRequests();
@@ -158,6 +160,51 @@ namespace GamingDisplayController
             Assert(tracker.Observe(dual, new[] { nativeTarget }, now.AddSeconds(15), out pending) == null && pending, "Device change reused old stability window.");
             Assert(tracker.Observe(dual, new[] { nativeTarget }, now.AddSeconds(17), out pending) == DisplayMode.Alienware, "Stable replacement observation rejected.");
             Assert(tracker.Observe(dual, new[] { nativeTarget }, now.AddSeconds(16), out pending) == null, "Backward clock ignored cooldown.");
+        }
+
+        private static void CheckPendingMonitorRecovery()
+        {
+            ControllerState stream = new ControllerState { Mode = DisplayMode.Stream, StreamClient = "test", StreamWidth = 3840,
+                StreamHeight = 2160, StreamFps = 120, StreamHdr = true, SawSunshineUdp = true };
+            ControllerState waiting = stream.ForProfile(DisplayMode.Vdd, true);
+            Assert(DisplayRecovery.IsAwaitingMonitor(waiting) && waiting.Mode == DisplayMode.Vdd && waiting.TransitionDestination == DisplayMode.Vdd,
+                "Finished-stream recovery did not retain monitor intent on temporary VDD.");
+            Assert(waiting.StreamClient == "" && waiting.StreamWidth == 0 && waiting.StreamFps == 0 && !waiting.SawSunshineUdp,
+                "Pending recovery retained finished-stream metadata.");
+            Assert(stream.Mode == DisplayMode.Stream && stream.StreamWidth == 3840, "Recovery intent mutated its source state.");
+            ControllerState persisted = ControllerState.Parse(new[] { "Mode=Vdd", "AwaitingMonitor=True" });
+            Assert(DisplayRecovery.IsAwaitingMonitor(persisted) && persisted.Clone().AwaitingMonitor, "Pending intent was lost across parsing/cloning.");
+            Assert(!ControllerState.Parse(new[] { "Mode=Vdd" }).AwaitingMonitor, "Legacy/manual VDD acquired automatic monitor intent.");
+            foreach (DisplayMode mode in new[] { DisplayMode.Tv, DisplayMode.Alienware, DisplayMode.Alienware330, DisplayMode.Alienware4K, DisplayMode.Vdd, DisplayMode.Stream })
+                Assert(!waiting.ForProfile(mode).AwaitingMonitor, "Successful explicit selection did not cancel waiting: " + mode);
+            Assert(!waiting.ForProfile(DisplayMode.Alienware).AwaitingMonitor, "Successful native return retained pending intent.");
+            Assert(!DisplayRecovery.IsAwaitingMonitor(new ControllerState { Mode = DisplayMode.Stream, AwaitingMonitor = true }),
+                "Stale pending flag could interrupt an active stream.");
+            DisplayTarget native = HardwareTarget(DisplayMode.Alienware);
+            DisplayTarget dual = HardwareTarget(DisplayMode.Alienware330);
+            DisplayTarget vdd = new DisplayTarget { DevicePath = @"\\?\DISPLAY#MTT1337#test", Active = true, Available = true };
+            DisplayTarget tv = new DisplayTarget { DevicePath = @"\\?\DISPLAY#SAM721B#test", Active = true, Available = true };
+            native.Active = false;
+            Assert(DisplayRecovery.NativeMonitorAvailable(new[] { native, vdd }), "Inactive but available native monitor was not eligible to return.");
+            Assert(!DisplayRecovery.NativeMonitorAvailable(new[] { dual, vdd, tv }), "Optional DUAL or TV counted as native fallback.");
+            native.Available = false;
+            Assert(!DisplayRecovery.NativeMonitorAvailable(new[] { native, tv }), "Unavailable monitor counted as activatable.");
+            MonitorReturnTracker tracker = new MonitorReturnTracker();
+            DateTime now = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            Assert(!tracker.Observe(waiting, new[] { native, vdd }, now), "Correct temporary VDD was repeatedly reapplied.");
+            native.Available = true;
+            Assert(!tracker.Observe(waiting, new[] { native, vdd }, now.AddSeconds(1)), "Single native return observation triggered recovery.");
+            Assert(tracker.Observe(waiting, new[] { native, vdd }, now.AddSeconds(3)), "Stable native return was not retried.");
+            Assert(!tracker.Observe(waiting, new[] { native, vdd }, now.AddSeconds(4)), "Duplicate recovery work ignored cooldown.");
+            Assert(tracker.Observe(waiting, new[] { native, vdd }, now.AddSeconds(9)), "Failed native return could not retry.");
+            Assert(!tracker.Observe(waiting.ForProfile(DisplayMode.Tv), new[] { native, tv }, now.AddSeconds(10)), "Manual TV selection did not cancel pending recovery.");
+            Assert(!tracker.Observe(waiting.ForProfile(DisplayMode.Stream), new[] { native, vdd }, now.AddSeconds(11)), "Stream selection did not cancel pending recovery.");
+            native.Available = false;
+            Assert(!tracker.Observe(waiting, new[] { native, tv }, now.AddSeconds(12)), "Virtual safety repair ignored settle delay.");
+            Assert(!tracker.Observe(waiting, new[] { native, tv }, now.AddSeconds(16)), "Virtual safety repair ran before five seconds.");
+            Assert(tracker.Observe(waiting, new[] { native, tv }, now.AddSeconds(17)), "Missing virtual safety output was not repaired.");
+            Assert(!tracker.Observe(new ControllerState { Mode = DisplayMode.Vdd }, new[] { native, tv }, now.AddSeconds(18)),
+                "Explicit VDD selection unexpectedly acquired monitor return behavior.");
         }
 
         private static ActiveDisplayConfiguration NativeSnapshot()

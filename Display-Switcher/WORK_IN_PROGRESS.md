@@ -5,7 +5,8 @@
 The user is home and authorized deployment/testing. See
 [attended results](docs/AW3926QW-ATTENDED-RESULTS.md) for current state and remaining work.
 Both EXEs are deployed; one tray/watchdog instance was started after manual round trips passed.
-NVIDIA readback, dual-mode identity and hardware-follow fixes pass136 isolated checks. Native -> centered4K
+NVIDIA readback, dual-mode identity, hardware-follow and persistent native recovery
+pass 164 isolated checks. Native -> centered4K
 -> native 5120x2160/165/HDR passed controller checks and user visual confirmation.
 The source-only checkpoint below is historical; its no-deployment statements describe
 the earlier work, not the current installation. The office TV/native-monitor round trip
@@ -15,7 +16,13 @@ and user visual confirmation. The user requested hardware-only native/330 switch
 the running tray now follows stable hardware choices and updates HDR/caps/saved state.
 Both directions passed without tray clicks. Centered4K remained selected, its reapply
 passed, and an intentional unsupported330 request rolled back exactly to centered4K.
-The last test intentionally returned to native. Streaming/reboot/game tests remain.
+The last profile regression test intentionally returned to native. A later controlled
+Gears launch passed after correcting output selection; this did not establish a game bug.
+User then requested all automatic recovery, including Stop Stream, target native monitor
+instead of either TV/soundbar path. The deployed update uses temporary VDD and persists
+`AwaitingMonitor` until native can return; manual selection/new stream cancels it.
+The no-client stream-end handler restored native; physical off/on return is pending.
+Real client streaming, reboot and measured game FPS/VRR checks remain.
 
 ## Earlier source-only checkpoint
 
