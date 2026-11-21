@@ -1,6 +1,12 @@
 # AI Projects
 
-Source code and rebuild notes for the Windows gaming PC work completed with AI assistance.
+Source code, tools, automations, and rebuild notes for projects created with AI assistance across PCs.
+
+**AI assistants: read [AI-START-HERE.md](AI-START-HERE.md) first.**
+The root [AGENTS.md](AGENTS.md) points to the same shared standards.
+
+Future additions should be code projects and their supporting material, not general chat summaries.
+The existing research/history folders below are retained from the initial import.
 
 Start with [REBUILD.md](REBUILD.md), [PROJECT_INDEX.md](PROJECT_INDEX.md), [SHARING.md](SHARING.md), and [SYNC.md](SYNC.md).
 Each project has a README and AGENTS.md. A folder may contain research or a runbook rather than a completed application; its README identifies that distinction.
