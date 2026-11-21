@@ -20,7 +20,8 @@ Read [WORK_IN_PROGRESS.md](WORK_IN_PROGRESS.md) for the source checkpoint and
 | Manual/safety VDD | 1920x1080 / 120 Hz | Off | 120 | Existing behavior |
 | Sunshine stream | Client-requested 1080p or 4K / 60, 90, 120 Hz | Client request | Requested FPS | Existing behavior |
 
-The new monitor identity is AW3926QW `DELA2F9`. The old `DELA1E4` monitor is not
+AW3926QW uses `DELA2F9` in native mode and `DELA2FA` in DisplayPort DUAL/330 mode.
+Both are recognized as the same physical monitor. The old `DELA1E4` monitor is not
 eligible for these new timings. TV identity rules remain LG/GSM and exact Samsung
 soundbar `SAM721B`; the virtual display remains `MTT1337`.
 
@@ -50,8 +51,12 @@ Examples document available commands; they are not a request to execute them.
 
 ## Optional-mode prerequisites and limits
 
-330 Hz requires the monitor to advertise 2560x1080/330, which can require Dell's
-OSD Other Modes selection. The controller does not operate the OSD or invent a
+330 Hz requires the monitor to advertise 2560x1080/330 using Dell's
+OSD Other Modes selection. Hold the joystick inward four seconds to open the
+shortcut and choose 39-inch 21:9 2560x1080/330. The hardware change exposes a new
+EDID; Windows can restore an extended topology and leave HDR off on the new identity.
+Applying the explicit monitor profile disables the other outputs and enables HDR again.
+The controller does not operate the OSD or invent a
 custom timing. Returning to native 5K2K can require turning that hardware mode off.
 If native is unavailable during recovery, the existing TV/native-monitor/VDD
 fallback sequence can reach VDD; it does not select an optional resolution instead.
@@ -107,7 +112,7 @@ See [SOURCE_GUIDE.md](SOURCE_GUIDE.md) for source paths, compiler and RTSS depen
 `./build.ps1` compiles console/tray into ignored `outputs/DisplayController`.
 `./test-recovery.ps1` runs isolated checks using synthetic configurations and
 process-local test variables; it does not call the live display/HDR/RTSS APIs or
-write controller state. The latest source pass has 98 checks passing and both
+write controller state. The latest source pass has 101 checks passing and both
 application builds compiling. The build is deployed for attended manual testing.
 
 The original September/October deployed setup passed its historical staged tests;

@@ -5,11 +5,13 @@
 The user is home and authorized deployment/testing. See
 [attended results](docs/AW3926QW-ATTENDED-RESULTS.md) for current state and remaining work.
 Both EXEs are deployed; the tray/watchdog remains stopped during manual tests.
-An NVIDIA readback compatibility fix passes 98 isolated checks. Native -> centered 4K
+NVIDIA readback and dual-mode identity fixes pass 101 isolated checks. Native -> centered 4K
 -> native 5120x2160/165/HDR passed controller checks and user visual confirmation.
 The source-only checkpoint below is historical; its no-deployment statements describe
 the earlier work, not the current installation. The office TV/native-monitor round trip
-and TV-off retention also passed. 330/streaming/startup/game tests remain.
+and TV-off retention also passed. 330 entry/HDR/cap327 and reapply passed after recognizing
+the new DELA2FA EDID. Return from hardware330 to native remains pending, as do
+streaming/startup/game tests and OSD workflow with the watchdog active.
 
 ## Earlier source-only checkpoint
 

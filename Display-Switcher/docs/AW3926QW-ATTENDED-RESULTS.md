@@ -51,14 +51,31 @@ Dell built-in 4K mode or NVIDIA scaling-setting change was needed for this resul
   Read-only status still showed native5120x2160/165/HDR with TV/VDD inactive and
   no further controller transitions logged. EDID availability remained true for the TV.
 
+## Passed: 330 entry, HDR and reapply; native return pending
+
+- Selecting Other Modes 39-inch 2560x1080/330 changed the monitor EDID from
+  DELA2F9 to DELA2FA, with PnP name Alienware AW3926QW(DisplayPort DUAL).
+  The initial build did not recognize this second identity. Windows restored
+  active TV and VDD outputs as well; the monitor was at330 but HDR was off.
+- Added exact native/dual product-ID matching, preserving exclusion of the old
+  AW3423DW. Both EXEs compiled; 101 isolated checks passed, including dual EDID,
+  case-insensitivity and rejection of an unrelated product-ID prefix.
+- Before deployment, the prior installed build/data were privately copied to
+  `local-private/display-switcher/pre-dual-edid-2026-11-21-085805`.
+- `set monitor-330` verified at08:58:07: monitor-only2560x1080/330/HDRon/cap327,
+  TV and VDD inactive. User confirmed it worked, including the HDR correction.
+- `reapply` retained Alienware330 with those settings.
+- Hardware native-return, watchdog-active OSD workflow, actual game cap and VRR
+  remain unverified. Do not describe the whole330 workflow as complete yet.
+
 ## Remaining
 
-- Manual Dell hardware330 mode, cap327, and return to native after disabling dual mode.
+- Return to native after disabling Dell hardware dual mode.
 - 4K reapply and exact rollback from a previously selected 4K state on a failed transition.
 - One supervised tray instance, topology/watchdog behavior, reboot startup.
 - Actual game cap/HDR/VRR checks; no measured latency or DSC-health claim is made.
 - Real handheld and Xbox streaming regressions after physical profiles are stable.
 - Dolby Vision disablement is user intent; HDR-on verification does not prove DV is off.
 
-At this checkpoint native Alienware is selected and the tray is stopped. Re-read
+At this checkpoint Alienware330 is selected and the tray is stopped. Re-read
 live state when resuming. The earlier source checkpoint and baseline are historical.

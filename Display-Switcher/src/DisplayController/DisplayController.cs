@@ -317,8 +317,9 @@ namespace GamingDisplayController
             {
                 string upper = (DevicePath ?? "").ToUpperInvariant();
                 if (upper.Contains("DISPLAY#MTT1337")) return "VDD";
-                // AW3926QW only: do not send new timings to the retired AW3423DW.
-                if (upper.Contains("DISPLAY#DELA2F9")) return "Alienware";
+                // AW3926QW native and DisplayPort DUAL expose different EDIDs.
+                // Keep exact product boundaries; the retired AW3423DW stays excluded.
+                if (upper.Contains("DISPLAY#DELA2F9#") || upper.Contains("DISPLAY#DELA2FA#")) return "Alienware";
                 // The loft CX exposes its native LG/GSM EDID. The office C2 is
                 // connected through a Samsung HDMI 2.1 soundbar, which owns the
                 // downstream EDID and is deliberately recognized by its exact ID.

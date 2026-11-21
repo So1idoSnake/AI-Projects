@@ -77,6 +77,9 @@ namespace GamingDisplayController
             Assert(ControllerState.Parse(new string[] { "Mode=Alienware" }).Mode == DisplayMode.Alienware, "Legacy monitor state not retained.");
             Assert(ControllerState.Parse(new string[0]).Mode == DisplayMode.Tv, "Default TV state changed.");
             Assert(new DisplayTarget { DevicePath = @"\\?\DISPLAY#DELA2F9#example" }.Identity == "Alienware", "New EDID unrecognized.");
+            Assert(new DisplayTarget { DevicePath = @"\\?\DISPLAY#DELA2FA#example" }.Identity == "Alienware", "DisplayPort DUAL EDID unrecognized.");
+            Assert(new DisplayTarget { DevicePath = @"\\?\display#dela2fa#example" }.Identity == "Alienware", "Dual-mode EDID matching is case-sensitive.");
+            Assert(new DisplayTarget { DevicePath = @"\\?\DISPLAY#DELA2FA0#example" }.Identity == "Other", "Unrelated EDID prefix accepted.");
             Assert(new DisplayTarget { DevicePath = @"\\?\DISPLAY#DELA1E4#example" }.Identity == "Other", "Old monitor receives new timings.");
             Assert(new DisplayTarget { DevicePath = @"\\?\DISPLAY#SAM721B#example" }.Identity == "TV", "Soundbar identity changed.");
             Assert(new DisplayTarget { DevicePath = @"\\?\DISPLAY#GSMC0C8#example" }.Identity == "TV", "LG identity changed.");
