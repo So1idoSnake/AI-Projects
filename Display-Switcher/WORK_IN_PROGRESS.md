@@ -44,9 +44,10 @@ An agent reviewed current Microsoft, Dell and Dolby guidance. Keep general Windo
 HDR/advanced-color enablement independent of DV. The current SetHdr API cannot
 select or verify HDR10 versus Dolby Vision. Windows may auto-select DV on qualifying
 monitors; no guarantee has been established for all three modes or TV/soundbar paths.
-For the first attended tests, consider disabling Use Dolby Vision mode for the
-Alienware in Windows HDR settings while leaving HDR on. The Dell OSD also exposes
-Display > Dolby Vision. No preference was changed or automated.
+User decision: the user will manually disable Dolby Vision for this Windows setup;
+its benefit does not justify the added complexity. Standard HDR10 remains the target,
+with Windows HDR enabled. Do not add Dolby Vision support or automatic DV switching.
+This records intent, not a verified setting: nothing was disabled during this session.
 
 - Microsoft: https://support.microsoft.com/en-us/windows/hardware/display-graphics/hdr-settings-in-windows
 - Dell manual: https://dl.dell.com/content/manual37488095-alienware-39-5k-oled-gaming-monitor-aw3926qw-user-s-guide.pdf?language=en-us
