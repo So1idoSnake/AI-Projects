@@ -1,0 +1,7 @@
+# Personal evidence and copied historical command transcripts
+**/local-private/
+**/.env
+**/.env.*
+**/node_modules/
+**/__pycache__/
+*.dmp
