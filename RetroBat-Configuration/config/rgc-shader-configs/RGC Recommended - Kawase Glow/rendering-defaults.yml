@@ -1,0 +1,4 @@
+## Retro Game Corps recommended example: Kawase Glow
+default:
+  shader: blurs/kawase_glow
+  shaderGL: blurs/kawase_glow

@@ -7,6 +7,9 @@ This is an inventory of recoverable work, not a claim to have found every histor
 |---|---|---|
 | Display-Switcher | 2026-09-05/why-x20 | Design monitor switching profiles; 01a07368-33c7-7cc1-b1d5-36ea9d8f1f55 |
 | Windows-App-Startup | 2026-09-06/somewhere-you-created; 2026-10-15/rem | Bootup automation; 01a076c1-364a-7ae0-bcf3-b5ca112af425. Add Gemini to startup; 01a140f0-8816-7753-ac97-ba8426a8aa78 |
+| AutoHDRForceTouch | 2026-10-17/c-users-micha-documents-codex-2026/work/AutoHDRForceTouch | Review RetroBat setup README; 01a14a25-55ae-78b3-826d-61aeccb77470; actual C# implementation recovered |
+| RetroBat-Configuration | 2026-10-16/can-you-configure-retrobat-to-point | Configure RetroBat SD card paths; 01a1450f-536c-7632-8008-868ffc59ceae |
+| SplinterCell-Mods | 2026-10-17/i-m-downloading-games-on-steam; 2026-11-07/spl | Install Splinter Cell Enhanced Mods; 01a14b1b-9e06-75e1-8eca-a02039c80cf2. Find why Conviction won’t launch; 01a1b780-7208-7d50-9aae-896274e9aea5; references only |
 | Sunshine-Streaming | 2026-10-31/why-isn-t-moonlight-working-from; 2026-10-24 and 25 | Diagnose Moonlight startup failure; 01a192f0-2d84-71c1-897a-f7147ac7d95e. Fix Sunshine Xbox Moonlight Access; 01a16f2f-32fa-74b3-9dd6-c8887745614e. Inspect PC for game streaming setup; 01a17439-0924-7881-8950-4a65fae604aa |
 | Townfall-Mods | 2026-10-07/i-am-x20 | Install Townfall mods; 01a117c7-bfb3-7881-b436-33ca8051fa0f |
 | Hogwarts-Save-Migration | 2026-08-30/referenced-chatgpt-conversation-this-is-an | Verify Hogwarts Legacy save import; 01a052df-2856-7c61-b248-c624bd71edef |
@@ -21,3 +24,11 @@ Workspace roots above are under C:/Users/micha/Documents/Codex/.
 Private recovered command histories are partial, clearly marked, ignored by Git, and not install scripts.
 No standalone collection/import generator was found for the game-history or Gemini-memory artifacts.
 Do not describe their data files or historical shell transcripts as a maintained application.
+
+The November 21 handheld import also extends Sunshine-Streaming with client notes
+and two original rollback scripts from `2026-10-25/inspect-this-asus-rog-xbox-ally`
+(Inspect handheld streaming VRR; 01a17441-acbb-7503-a083-c5c222aad34f), and
+Windows-Personalization with two original edited wallpaper outputs from
+`2026-10-16/files-mentioned-by-the-user-01e53133`
+(Enhance photo and smooth gradients; 01a14757-a825-72d0-8d22-b15884e262cb).
+See [the import record](docs/ai/HANDHELD-IMPORT.md) for scope and validation.

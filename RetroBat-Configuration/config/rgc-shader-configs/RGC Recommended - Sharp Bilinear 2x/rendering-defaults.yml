@@ -1,0 +1,4 @@
+## Retro Game Corps recommended: Sharp Bilinear 2x Prescale
+default:
+  shader: pixel-art-scaling/sharp-bilinear-2x-prescale
+  shaderGL: interpolation/sharp-bilinear-2x-prescale

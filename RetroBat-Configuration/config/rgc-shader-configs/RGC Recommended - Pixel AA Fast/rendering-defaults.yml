@@ -1,0 +1,4 @@
+## Retro Game Corps recommended: Pixel AA Fast
+default:
+  shader: pixel-art-scaling/pixel_aa_fast
+  shaderGL: pixel-art-scaling/pixel_aa_fast

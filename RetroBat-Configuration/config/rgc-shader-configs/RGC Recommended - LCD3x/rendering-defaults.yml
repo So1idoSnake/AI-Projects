@@ -1,0 +1,4 @@
+## Retro Game Corps recommended: LCD3x
+default:
+  shader: handheld/lcd3x
+  shaderGL: handheld/lcd3x

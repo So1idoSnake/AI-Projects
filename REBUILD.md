@@ -50,6 +50,13 @@ obsolete-entry cleanup and testing. RTSS and the display tray remain separate st
 
 ## 6. Optional projects
 
+For the handheld, AutoHDRForceTouch contains its original C# source and a local
+build command; build it before launching the registry-editing GUI.
+RetroBat-Configuration records ROM paths, controls, graphics, shader dependencies
+and the previous iCloud save-junction migration. Rediscover paths and hardware
+before applying those settings. SplinterCell-Mods is a reference to upstream
+packages and prior changes, with no bundled game/mod payloads.
+
 Install games first; then use the individual mod/save guides. Hogwarts migration remains unresolved
 for ordinary manual-save slots. Never replay old WGS patch commands. Memory/history projects need
 new authorized source exports, not credentials from this PC. AI-App-Configuration is historical:

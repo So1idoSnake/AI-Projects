@@ -39,3 +39,12 @@ credential-store contents.
 The schedule is stored by the app, not installed by cloning this repository.
 On a new computer, configure authentication and recreate the daily automation
 with the rules above. Then verify the remote branch commit hashes after a push.
+
+## November 21 handheld checkout
+
+The handheld imported its work from a separate checkout under
+`Documents/Codex/2026-11-21/https-github-com-so1idosnake-ai-projects`.
+After the user completed Git sign-in, command-line fetch of the existing
+`projects/consolidate-existing-work` branch succeeded. This does not verify or
+change the desktop's daily automation or its credential setup. Report a source
+backup as pushed only after comparing the remote head with the local commit.

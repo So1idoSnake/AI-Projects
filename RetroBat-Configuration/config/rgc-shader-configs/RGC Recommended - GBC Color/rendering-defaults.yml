@@ -1,0 +1,4 @@
+## Retro Game Corps recommended example: GBC Color
+default:
+  shader: handheld/color-mod/gbc-color
+  shaderGL: handheld/gbc-color

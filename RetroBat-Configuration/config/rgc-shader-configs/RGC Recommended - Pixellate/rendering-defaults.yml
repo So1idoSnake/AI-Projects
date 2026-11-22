@@ -1,0 +1,4 @@
+## Retro Game Corps recommended: Pixellate
+default:
+  shader: pixel-art-scaling/pixellate
+  shaderGL: interpolation/pixellate

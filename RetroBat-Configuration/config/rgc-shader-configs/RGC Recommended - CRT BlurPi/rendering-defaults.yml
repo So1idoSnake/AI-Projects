@@ -1,0 +1,4 @@
+## Retro Game Corps recommended: CRT BlurPi
+default:
+  shader: crt/crt-blurPi-soft
+  shaderGL: crt/crt-blurPi
