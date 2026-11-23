@@ -1,8 +1,24 @@
-# Splinter Cell mod reference
+# Splinter Cell mods and Xbox recomp setup
 
 Reference for the six Steam games configured on the handheld on October 17,
-2026. This folder records the sources and changes; it contains no downloaded
-mods, game files, saves, staging tree or installer.
+2026, and the original Xbox Double Agent recomp configured on the desktop on
+November 22, 2026. This folder records upstream sources, setup instructions,
+and verification limits; it contains no downloaded mods, game files, saves,
+staging tree or installer.
+
+## Original Xbox Double Agent recomp
+
+See the [SCDA-XBERecomp setup and rebuild guide](docs/SCDA-XBERecomp.md) for the
+separate [TGP482 port](https://github.com/TGP482/SCDA-XBERecomp). Release V3 was
+downloaded and checksum-verified, the user's original Xbox ISO was copied and
+verified locally, both game DLLs compiled, and the animated title screen was
+observed on November 22. Gameplay, profile creation, and multiplayer remain
+untested. The test instance was closed afterward.
+
+This uses the original Xbox version of Double Agent. The PC game and its
+widescreen fix below are a separate installation and cannot supply its assets.
+The deployment remains at `C:/Github/SCDA-XBERecomp-Setup`; this repository keeps
+the runbook and [release provenance](reference/SCDA-XBERecomp-V3.json).
 
 ## Mods and completed work
 

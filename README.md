@@ -17,7 +17,7 @@ Each project has a README and AGENTS.md. A folder may contain research or a runb
 | [Windows-App-Startup](Windows-App-Startup/README.md) | Reusable sign-in shortcuts for ChatGPT, Xbox, Gemini |
 | [AutoHDRForceTouch](AutoHDRForceTouch/README.md) | Original touch-friendly C# Auto HDR utility, source, tests and icon tooling |
 | [RetroBat-Configuration](RetroBat-Configuration/README.md) | Handheld setup notes, custom shader selectors and PE inspection tool |
-| [SplinterCell-Mods](SplinterCell-Mods/README.md) | Upstream mod references, completed install work and verification limits |
+| [SplinterCell-Mods](SplinterCell-Mods/README.md) | Steam mod references and original Xbox Double Agent recomp setup, with verification limits |
 | [Sunshine-Streaming](Sunshine-Streaming/README.md) | Host setup, prep/undo recovery and streaming findings |
 | [Townfall-Mods](Townfall-Mods/README.md) | Installation recipe, configuration and mod provenance |
 | [Hogwarts-Save-Migration](Hogwarts-Save-Migration/README.md) | Steam/Xbox migration attempts and unresolved manual slots |

@@ -9,6 +9,15 @@ For each other project, the README says whether executable code was recovered or
 performed with one-off commands, UI interaction, or third-party packages. Historical commands
 are reference material and may be incomplete or unsafe to replay.
 
+[The Double Agent recomp guide](SplinterCell-Mods/docs/SCDA-XBERecomp.md) records
+an installation of TGP482's third-party port, not an original game implementation.
+Share its runbook and release metadata; obtain binaries and source from upstream.
+Xbox disc images, extracted game files, generated game code/DLLs, saves, compiler
+work directories, and raw runtime logs are outside this GitHub backup. The local
+deployment's separate Git repository has no remote; its ignored assets are not
+protected by pushing this repository. Preserve upstream licensing when obtaining
+or redistributing upstream components.
+
 Before publishing or sharing:
 - Share source and runbooks; omit local-private folders, personal exports, saves and raw diagnostics.
 - Paths, app IDs and monitor EDIDs in historical material may need adjustment.

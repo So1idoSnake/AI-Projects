@@ -54,8 +54,14 @@ For the handheld, AutoHDRForceTouch contains its original C# source and a local
 build command; build it before launching the registry-editing GUI.
 RetroBat-Configuration records ROM paths, controls, graphics, shader dependencies
 and the previous iCloud save-junction migration. Rediscover paths and hardware
-before applying those settings. SplinterCell-Mods is a reference to upstream
-packages and prior changes, with no bundled game/mod payloads.
+before applying those settings. [SplinterCell-Mods](SplinterCell-Mods/README.md)
+records upstream Steam fixes and the separate
+[original Xbox Double Agent recomp setup](SplinterCell-Mods/docs/SCDA-XBERecomp.md).
+For the recomp, download the official release and supply your own original Xbox
+ISO or complete extracted game files; the Steam/PC game files cannot replace them.
+Keep the deployment outside this repository and allow its first-run compilation
+to finish. The November 22 desktop check reached the title screen; gameplay and
+multiplayer remain untested. No game/mod payloads or saves are bundled here.
 
 Install games first; then use the individual mod/save guides. Hogwarts migration remains unresolved
 for ordinary manual-save slots. Never replay old WGS patch commands. Memory/history projects need
