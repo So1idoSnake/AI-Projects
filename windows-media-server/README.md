@@ -30,6 +30,14 @@ Router forwarding and client access still need device checks. On a LAN client si
 
 ## 2. Build and verify the download pipeline
 
+Use the [download setup runbook](download-setup.md) to compare providers and later connect the apps. The [download plan](DownloadPlan.psd1) holds the provider-independent routes, folders, and ports. Preview the layout from the project folder in PowerShell.
+
+```powershell
+.\Prepare-DownloadSetup.ps1
+```
+
+The preview checks the local NTFS path and reports observed TCP listeners. Once live setup is authorized, `-CreateFolders -WhatIf` previews the creation and `-CreateFolders` creates missing directories. If you override `-MediaRoot`, use an existing parent on a fixed local NTFS drive.
+
 Prowlarr syncs indexers to Sonarr and both Radarr instances. These apps send jobs to qBittorrent for torrents or NZBGet for Usenet, then import finished files. Use local paths under `E:\MediaServer` for all new staging and library data. [Prowlarr quick start](https://wiki.servarr.com/en/prowlarr/quick-start-guide) · [Radarr quick start](https://wiki.servarr.com/en/radarr/quick-start-guide)
 
 | App | Local port | Download category | Import destination |
@@ -47,5 +55,5 @@ Prowlarr syncs indexers to Sonarr and both Radarr instances. These apps send job
 ## 3. Review the request interface and family access later
 
 - Pilot stock Seerr on Windows at `127.0.0.1:5055` after the pipeline passes. Connect it to Plex, Sonarr, and regular Radarr. Keep travel requests owner-only and require approval before family requests enter a download queue. [Seerr Windows setup](https://docs.seerr.dev/getting-started/buildfromsource/#windows)
-- Review stock Seerr on desktop and phone alongside one or two original AI-assisted mockups. Test title search, availability, request submission, and status. Keep stock Seerr if it meets those needs. If an original design solves a clear usability problem, build the smallest useful extension and keep credentials and approval controls server-side.
+- Review the stock Seerr look and workflow on desktop and phone. Test title search, availability, request submission, and status. Keep stock Seerr if it meets those needs. Reserve AI-assisted mockups for a specific usability problem, and build an extension only if the mockup solves it. Keep credentials and approval controls server-side. [Request interface review brief](request-interface.md)
 - Keep texting as the fallback. An optional Plex Watchlist pilot lets each parent make requests from the Plex app after a one-time Seerr login and opt-in. Keep auto-approval disabled. If a separate request page is preferred, test invite-only Tailscale Serve with Mullvad before enabling it. Limit access to the request page and verify that an uninvited device cannot open it. [Seerr Watchlist requests](https://docs.seerr.dev/using-seerr/plex/watchlist-auto-request/) · [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve)
