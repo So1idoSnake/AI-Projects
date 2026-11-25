@@ -17,6 +17,9 @@ work directories, and raw runtime logs are outside this GitHub backup. The local
 deployment's separate Git repository has no remote; its ignored assets are not
 protected by pushing this repository. Preserve upstream licensing when obtaining
 or redistributing upstream components.
+Custom Steam artwork and its source/prompt manifest also remain in the ignored
+deployment; the shared runbook records attribution and the AI-reframed banner's
+provenance without publishing image payloads.
 
 Before publishing or sharing:
 - Share source and runbooks; omit local-private folders, personal exports, saves and raw diagnostics.

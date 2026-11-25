@@ -20,6 +20,12 @@ widescreen fix below are a separate installation and cannot supply its assets.
 The deployment remains at `C:/Github/SCDA-XBERecomp-Setup`; this repository keeps
 the runbook and [release provenance](reference/SCDA-XBERecomp-V3.json).
 
+On November 25, its non-Steam shortcut was named **Splinter Cell: Double Agent
+(Xbox Recomp)** and given an Xbox-branded cover, wide tile, and fitted banner.
+Artwork sources and the AI banner-reframing prompt stay in the deployment's
+ignored `game/artwork/` folder. The [runbook](docs/SCDA-XBERecomp.md#steam-library-presentation--november-25-2026)
+records the files, provenance, and Steam customization procedure.
+
 ## Mods and completed work
 
 | Game | Installed package | Purpose recorded during setup |

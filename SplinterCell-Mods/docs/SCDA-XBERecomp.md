@@ -33,12 +33,53 @@ this documentation update or a compatibility guarantee for another machine.
 | `game/assets/` | Local user-supplied ISO or extracted Xbox game files |
 | `game/compiler/` | Bundled compiler, generated code, and compilation cache |
 | `game/logs/` | Local application and compile logs |
+| `game/artwork/` | Ignored Steam cover, wide tile, banner, source manifest, and banner prompt |
 
 The deployment's README contains local operational details. Its Git exclusions
 cover the entire `downloads/` and `game/` directories. Pushing this documentation
 does not back up the installation, game files, settings, or saves. No original
 standalone installer script was created; setup used bounded download, checksum,
 copy, extraction, and application-launch commands.
+
+## Steam library presentation — November 25, 2026
+
+The existing non-Steam shortcut was renamed from `SCDA` to
+**Splinter Cell: Double Agent (Xbox Recomp)**. Its custom sort name is
+`Tom Clancy's Splinter Cell: Double Agent (Xbox Recomp)` to group it with the
+other Splinter Cell titles. Its target remains `game/SCDA.exe` and its working
+directory remains `game/`; the application filename and native PC Steam entry
+were left unchanged.
+
+Steam's **Properties > Customization** was used to apply:
+
+| Steam field | File under `game/artwork/` | Dimensions |
+|---|---|---|
+| Cover | `splinter-cell-double-agent-xbox-cover.jpg` | 1521 x 2156 |
+| Background/banner | `splinter-cell-double-agent-xbox-banner.png` | 2172 x 724 |
+| Wide Cover | `splinter-cell-double-agent-xbox-hero.jpg` | 1920 x 1080 |
+
+The cover includes original Xbox branding. The banner was reframed with the
+built-in image-generation tool from a monochrome promotional wallpaper to keep
+Sam's face visible in Steam's wide crop and leave dark space for the title.
+The downloaded source wallpaper is retained as
+`splinter-cell-double-agent-wallpaper.jpg`; the exact prompt is in
+`banner-prompt.txt`. This is an AI-edited derivative, not an untouched official
+banner. No upscaling was applied to the cover or wide-cover source.
+
+Artwork sources: [TheGamesDB Xbox cover](https://thegamesdb.net/game.php?id=6197),
+[LaunchBox promotional art](https://gamesdb.launchbox-app.com/games/details/11306-tom-clancys-splinter-cell-double-agent),
+and [GoodFon source wallpaper](https://www.goodfon.com/games/wallpaper-splinter-cell-double-agent.html).
+`artwork-sources.json` records source URLs, roles, dimensions, and SHA-256 hashes.
+The whole artwork directory, including that manifest and prompt, is Git-ignored
+by the deployment's existing `/game/` rule. Images are not uploaded to GitHub.
+
+Verified the applied cover, wide-cover preview, displayed banner, and distinct
+Xbox/PC Steam names; Steam's three saved artwork files matched their local
+source hashes. The game was not launched during this presentation update.
+On a fresh Steam profile, add the existing executable as a non-Steam game and
+use **Properties > Customization > Change** to choose these files again.
+Steam maintains its own per-profile image copies, separate from the artwork
+source folder. Use each field's **Reset** control to revert that field later.
 
 ## Required game files
 
