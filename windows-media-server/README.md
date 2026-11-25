@@ -16,6 +16,18 @@
 - Confirm the named user can write to `Transfer` and read `Game Archive`, while guest access and retired shares are denied. The owner has already confirmed baseline LAN file access. Test Plex on a home device and a phone using cellular data, and verify that the remote Plex connection is direct with Mullvad connected. Preserve Mullvad LAN sharing and the Plex split-tunnel exclusion.
 - Keep Plex video transcoding disabled. Use Direct Play or Direct Stream with the original video track, and allow Plex to convert audio when the client requires it. For iPhone cellular checks, start at Original quality with a compatible title and subtitles off. Force Direct Play if the app still asks for conversion. This worked in the initial 5G test with Mullvad connected. [Plex Direct Play and Direct Stream](https://support.plex.tv/articles/200250387-streaming-media-direct-play-and-direct-stream/)
 
+### Check the Windows setup
+
+Run [Test-Setup.ps1](Test-Setup.ps1) on the server under the Windows account that runs Plex. Supply the wired adapter name and the network address of the home subnet in CIDR notation.
+
+```powershell
+.\Test-Setup.ps1 -LanInterface '<wired adapter name>' -LanSubnet '<home subnet in CIDR>'
+```
+
+The script reads the SMB share and NTFS root permissions, the active SMB firewall rule and other rules that explicitly include TCP `445`, Guest and Remote Desktop settings, and local Plex configuration and health. It returns exit code `1` when a check needs review and `0` when the local checks pass. It leaves all settings as they are and uses no credentials. A separate firewall audit is needed to assess wildcard and dynamic rules.
+
+Router forwarding and client access still need device checks. On a LAN client signed in as `ShareUser`, open `Game Archive`, then create and delete a test file in `Transfer`. Confirm the archive rejects writes. With Wi-Fi off on the iPhone, play a compatible title from the personal Plex library and check the Plex dashboard for a direct connection. In Deco, confirm the wired adapter's address reservation, the single TCP rule to Plex, and any IPv6 exceptions for the server.
+
 ## 2. Build and verify the download pipeline
 
 Prowlarr syncs indexers to Sonarr and both Radarr instances. These apps send jobs to qBittorrent for torrents or NZBGet for Usenet, then import finished files. Use local paths under `E:\MediaServer` for all new staging and library data. [Prowlarr quick start](https://wiki.servarr.com/en/prowlarr/quick-start-guide) · [Radarr quick start](https://wiki.servarr.com/en/radarr/quick-start-guide)
