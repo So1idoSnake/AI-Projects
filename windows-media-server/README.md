@@ -36,7 +36,7 @@ Use the [download setup runbook](download-setup.md) to compare providers and lat
 .\Prepare-DownloadSetup.ps1
 ```
 
-The preview checks the local NTFS path and reports observed TCP listeners. Once live setup is authorized, `-CreateFolders -WhatIf` previews the creation and `-CreateFolders` creates missing directories. If you override `-MediaRoot`, use an existing parent on a fixed local NTFS drive.
+The preview checks the local NTFS path and reports observed TCP listeners. Once live setup is authorized, `-CreateFolders -WhatIf` previews the creation and `-CreateFolders` creates missing directories. Add `-TorrentOnly` to stage the torrent routes for the Knaben trial. If you override `-MediaRoot`, use an existing parent on a fixed local NTFS drive. [Torrent trial workflow](download-setup.md#torrent-only-trial)
 
 Prowlarr syncs indexers to Sonarr and both Radarr instances. These apps send jobs to qBittorrent for torrents or NZBGet for Usenet, then import finished files. Use local paths under `E:\MediaServer` for all new staging and library data. [Prowlarr quick start](https://wiki.servarr.com/en/prowlarr/quick-start-guide) · [Radarr quick start](https://wiki.servarr.com/en/radarr/quick-start-guide)
 

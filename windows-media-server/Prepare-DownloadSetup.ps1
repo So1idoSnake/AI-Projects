@@ -3,7 +3,9 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$MediaRoot,
 
-    [switch]$CreateFolders
+    [switch]$CreateFolders,
+
+    [switch]$TorrentOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -50,7 +52,8 @@ if ($mediaParent -ne $driveRoot -and !(Test-SafeDirectoryPath $mediaParent)) {
 }
 
 $categories = @('Incomplete', 'manual') + @($plan.Routes.Category)
-$clientFolders = @($plan.DownloadClients.Folder)
+$downloadClients = @($plan.DownloadClients | Where-Object { !$TorrentOnly -or $_.Name -eq 'qBittorrent' })
+$clientFolders = @($downloadClients.Folder)
 $libraryFolders = @($plan.Routes.Library)
 foreach ($names in @($categories, $clientFolders, $libraryFolders)) {
     foreach ($name in $names) { Assert-DirectoryName $name }
@@ -60,7 +63,7 @@ foreach ($names in @($categories, $clientFolders, $libraryFolders)) {
 $downloadRoot = Join-Path $MediaRoot 'Downloads'
 $libraryRoot = Join-Path $MediaRoot 'Library'
 $directories = @($MediaRoot, $downloadRoot, $libraryRoot)
-foreach ($client in $plan.DownloadClients) {
+foreach ($client in $downloadClients) {
     $clientRoot = Join-Path $downloadRoot $client.Folder
     $directories += $clientRoot
     foreach ($category in $categories) { $directories += Join-Path $clientRoot $category }
@@ -68,7 +71,7 @@ foreach ($client in $plan.DownloadClients) {
 foreach ($library in $libraryFolders) { $directories += Join-Path $libraryRoot $library }
 
 $listeners = [Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveTcpListeners()
-$applications = @(@{ Name = 'Prowlarr'; Port = $plan.ProwlarrPort }) + $plan.DownloadClients + $plan.Routes
+$applications = @(@{ Name = 'Prowlarr'; Port = $plan.ProwlarrPort }) + $downloadClients + $plan.Routes
 foreach ($app in $applications) {
     if ($app.Port -isnot [int] -or $app.Port -lt 1 -or $app.Port -gt 65535) { throw "Invalid port for $($app.Name)." }
 }

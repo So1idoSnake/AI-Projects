@@ -2,6 +2,20 @@
 
 Use this runbook on the server after the [Windows, router and device checks](README.md) pass and the owner authorizes the live build. The local plan can be reviewed while provider choices are open. A working torrent route and a working Usenet route can be tested independently.
 
+## Torrent-only trial
+
+Start with Knaben in Prowlarr and qBittorrent bound to Mullvad. `Prepare-DownloadSetup.ps1 -TorrentOnly` previews the three library routes and torrent folders. Add `-CreateFolders` when ready to create them. Use the **Media Server** folder on the Windows desktop to open the stock browser pages. The login shortcut opens the page and copies its local password for the `media-admin` account.
+
+| Page | Port | Use |
+| --- | ---: | --- |
+| Sonarr | 8989 | Find a show or episode and pick a release. |
+| Radarr | 7878 | Choose regular Movies or the `4K HDR (manual)` profile for an HDR title. |
+| Radarr Small Movies | 7879 | Choose the `Small Movies (720p-1080p)` profile for a requested travel copy. |
+| Prowlarr | 9696 | Check Knaben status and the manual-only sync profile. |
+| qBittorrent | 8080 | Watch queued and active downloads. New jobs use their category paths. |
+
+Use **Interactive Search** and choose the individual release after checking size and format. Leave **Search on Add** unchecked. Knaben is synced with interactive search enabled and automatic search and RSS grabbing disabled. The 4K HDR profile uses the release's `HDR` or `HDR10` label for filtering. Confirm the imported file's format with Plex Media Info before relying on Direct Play. Keep the TV, regular movie, and travel tests separate. [Radarr search workflow](https://wiki.servarr.com/radarr/faq)
+
 ## Provider decisions
 
 | Input | What to confirm before connecting |
