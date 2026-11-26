@@ -1,6 +1,14 @@
 # Windows home media server
 
-**Draft for review.** The rollout uses the existing Windows desktop and NTFS drives. Plex is the only service intended for off-network access. File sharing stays on the home network. Complete Windows, router, and device setup before configuring download providers or building a request interface.
+The server runs on the existing Windows desktop and NTFS drives. Plex is the only service published through the router. File shares and the Sonarr and Radarr pages are available on the home network. The download pipeline uses native Windows apps and manual release selection.
+
+| Area | Status |
+| --- | --- |
+| Windows file sharing | `Transfer` and `Game Archive` use a named non-admin account. The SMB firewall rule is scoped to the wired home network. The custom drive-root shares were retired. |
+| Plex | Direct remote playback was verified from an iPhone on cellular with Mullvad connected. Video transcoding is disabled. The tested iPhone client needed Force Direct Play. |
+| Torrent workflow | Phone access to regular Radarr, Knaben interactive search, qBittorrent downloads, Radarr imports, and Plex indexing were verified with 1080p and 4K HDR movies. Sonarr and Small Movies are configured. Their full download and import checks are pending. |
+| Owner access over cellular | Tailscale installation and private access are pending. Sonarr and Radarr currently require the home network. |
+| Usenet and family requests | NZBGet provider setup, stock Seerr review, and family access are planned. |
 
 ## Team and access preflight
 
@@ -26,11 +34,11 @@ Run [Test-Setup.ps1](Test-Setup.ps1) on the server under the Windows account tha
 
 The script reads the SMB share and NTFS root permissions, the active SMB firewall rule and other rules that explicitly include TCP `445`, Guest and Remote Desktop settings, and local Plex configuration and health. It returns exit code `1` when a check needs review and `0` when the local checks pass. It leaves all settings as they are and uses no credentials. A separate firewall audit is needed to assess wildcard and dynamic rules.
 
-Router forwarding and client access still need device checks. On a LAN client signed in as `ShareUser`, open `Game Archive`, then create and delete a test file in `Transfer`. Confirm the archive rejects writes. With Wi-Fi off on the iPhone, play a compatible title from the personal Plex library and check the Plex dashboard for a direct connection. In Deco, confirm the wired adapter's address reservation, the single TCP rule to Plex, and any IPv6 exceptions for the server.
+Repeat the device checks after changes to the router, firewall, or VPN. On a LAN client signed in as `ShareUser`, open `Game Archive`, then create and delete a test file in `Transfer`. Confirm the archive rejects writes. With Wi-Fi off on the iPhone, play a compatible title from the personal Plex library and check the Plex dashboard for a direct connection. In Deco, confirm the wired adapter's address reservation, the single TCP rule to Plex, and any IPv6 exceptions for the server.
 
 ## 2. Build and verify the download pipeline
 
-Use the [download setup runbook](download-setup.md) to compare providers and later connect the apps. The [download plan](DownloadPlan.psd1) holds the provider-independent routes, folders, and ports. Preview the layout from the project folder in PowerShell.
+Use the [download setup runbook](download-setup.md) for phone access, manual release selection, and import troubleshooting. The [download plan](DownloadPlan.psd1) holds the routes, folders, and ports for setup and recovery. Preview the layout from the project folder in PowerShell.
 
 ```powershell
 .\Prepare-DownloadSetup.ps1
@@ -38,7 +46,7 @@ Use the [download setup runbook](download-setup.md) to compare providers and lat
 
 The preview checks the local NTFS path and reports observed TCP listeners. Once live setup is authorized, `-CreateFolders -WhatIf` previews the creation and `-CreateFolders` creates missing directories. Add `-TorrentOnly` to stage the torrent routes for the Knaben trial. If you override `-MediaRoot`, use an existing parent on a fixed local NTFS drive. [Torrent trial workflow](download-setup.md#torrent-only-trial)
 
-Prowlarr syncs indexers to Sonarr and both Radarr instances. These apps send jobs to qBittorrent for torrents or NZBGet for Usenet, then import finished files. Use local paths under `E:\MediaServer` for all new staging and library data. [Prowlarr quick start](https://wiki.servarr.com/en/prowlarr/quick-start-guide) · [Radarr quick start](https://wiki.servarr.com/en/radarr/quick-start-guide)
+Prowlarr syncs Knaben to Sonarr and both Radarr instances. These apps send selected releases to qBittorrent, then import finished files. NZBGet is the planned Usenet client. Staging and library data use local paths under `E:\MediaServer`. [Prowlarr quick start](https://wiki.servarr.com/en/prowlarr/quick-start-guide) · [Radarr quick start](https://wiki.servarr.com/en/radarr/quick-start-guide)
 
 | App | Local port | Download category | Import destination |
 | --- | --- | --- | --- |
@@ -47,10 +55,15 @@ Prowlarr syncs indexers to Sonarr and both Radarr instances. These apps send job
 | Radarr Small Movies | `7879` | `movies-small` | `Library\Small Movies` |
 
 - Stage files under `Downloads\Torrents` and `Downloads\Usenet`, with category subfolders and separate incomplete folders. Keep staging and imports on the same NTFS volume for hardlinks and moves. Preserve the existing qBittorrent queue and Plex paths. Start with completed-download handling on and automatic cleanup off.
-- Bind all admin UIs to `127.0.0.1` and require authentication. Prowlarr uses `9696`, qBittorrent `8080`, and NZBGet `6789`. Enable Mullvad auto-connect, bind qBittorrent to the Mullvad interface, and disable qBittorrent automatic port mapping. Use certificate-verified TLS for Usenet. Start apps without elevation after Windows sign-in, with Windows auto-login off and sleep disabled while serving. [qBittorrent VPN binding](https://github.com/qbittorrent/wiki/blob/master/How-to-bind-your-vpn-to-prevent-ip-leaks.md) · [NZBGet certificate verification](https://nzbget.com/documentation/certificate-verification/)
+- Keep the apps bound to `127.0.0.1` with authentication required. Windows forwards the three picker ports in the table only on the reserved home LAN address, with firewall rules scoped to the wired adapter and home subnet. Prowlarr on `9696` and qBittorrent on `8080` remain desktop-only. The reserved NZBGet port is `6789`.
+- Keep Mullvad auto-connect enabled, bind qBittorrent to the Mullvad interface, and disable qBittorrent automatic port mapping. Set **Tools → On Downloads Done → Do Nothing** so Radarr and Sonarr can reach qBittorrent after transfers finish. Use certificate-verified TLS for Usenet when configured. The torrent apps use per-user startup shortcuts and start without elevation after Windows sign-in. [qBittorrent VPN binding](https://github.com/qbittorrent/wiki/blob/master/How-to-bind-your-vpn-to-prevent-ip-leaks.md) · [NZBGet certificate verification](https://nzbget.com/documentation/certificate-verification/)
 - Keep Small Movies opt-in. Give the second Radarr instance separate app data, a dedicated category, and a starter 720p/1080p profile capped at 3 GB per release. Use interactive search for individual requests. Keep library mirroring, automatic grabs, and upgrades off. Keep `E:\SmallMovies` in its existing Plex library and add the new import root as **Travel Movies**. [Radarr multiple instances](https://wiki.servarr.com/radarr/installation/multiple-instances) · [Radarr profiles](https://wiki.servarr.com/radarr/settings)
 - Choose small copies that are already encoded for travel devices. Start with SDR H.264 video and stereo AAC in an MP4 container where available. Confirm the imported file's codecs and test playback on the travel device at Original quality before relying on it offline.
-- Test both download protocols and all three import paths. Verify that a seeding torrent is hardlinked, Plex sees new files, and a travel copy plays offline. Confirm qBittorrent stops transferring when Mullvad disconnects and resumes after reconnecting. Reboot, sign in, and check startup and localhost-only admin access. Back up working configuration separately from writable shares.
+- Finish the [verification checklist](download-setup.md#4-verify-before-enabling-ordinary-use) before treating the remaining routes as ready. Back up working configuration separately from writable shares.
+
+### Private Sonarr and Radarr access
+
+For the owner to use Sonarr and Radarr over cellular, install Tailscale on Windows and the iPhone and sign in to the same private network. Before enabling the private HTTPS links, replace temporary app passwords and restrict Tailscale access to those services. Keep SMB on the home LAN and Plex on its existing router rule. With Mullvad connected, test both app logins and confirm qBittorrent still uses Mullvad and Plex still plays directly over cellular. [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve) · [VPN compatibility](https://tailscale.com/docs/reference/faq/other-vpns)
 
 ## 3. Review the request interface and family access later
 
