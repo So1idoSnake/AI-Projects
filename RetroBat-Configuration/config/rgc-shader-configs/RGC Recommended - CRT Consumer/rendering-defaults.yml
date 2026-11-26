@@ -1,0 +1,4 @@
+## Retro Game Corps recommended: CRT Consumer
+default:
+  shader: crt/crt-consumer
+  shaderGL: crt/crt-consumer

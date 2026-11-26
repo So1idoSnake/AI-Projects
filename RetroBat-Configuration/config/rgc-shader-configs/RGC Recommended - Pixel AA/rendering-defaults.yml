@@ -1,0 +1,4 @@
+## Retro Game Corps recommended: Pixel AA
+default:
+  shader: pixel-art-scaling/pixel_aa
+  shaderGL: pixel-art-scaling/pixel_aa

@@ -1,0 +1,4 @@
+## Retro Game Corps recommended example: CRT Geom
+default:
+  shader: crt/crt-geom
+  shaderGL: crt/crt-geom

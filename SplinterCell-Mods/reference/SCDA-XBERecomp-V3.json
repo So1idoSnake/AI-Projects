@@ -1,0 +1,16 @@
+{
+  "repository": "https://github.com/TGP482/SCDA-XBERecomp",
+  "version": "V3",
+  "published_at": "2026-10-29T14:40:46Z",
+  "release_url": "https://github.com/TGP482/SCDA-XBERecomp/releases/tag/V3",
+  "source_commit": "ee5b44027bb99cdc11692b466f01d7930912240d",
+  "checked_on": "2026-11-22",
+  "assets": [
+    {
+      "name": "SCDA-XBERecomp.zip",
+      "size": 73479363,
+      "digest": "sha256:3f1bb078a2d9857ad0a29ed793c14a79b1fa747ca9420cccc828db591fa8416a",
+      "browser_download_url": "https://github.com/TGP482/SCDA-XBERecomp/releases/download/V3/SCDA-XBERecomp.zip"
+    }
+  ]
+}

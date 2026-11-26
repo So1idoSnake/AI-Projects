@@ -41,3 +41,26 @@ scripts/restart-sunshine.ps1 is the original helper, relocated unchanged. It res
 and writes its result beside itself; running it terminates active streams. This import did not run it.
 The installed config omits dd_configuration_option; an older sample explicitly says disabled.
 A prior host inspection found the installed build's default disabled. Re-check on a new version.
+
+## Handheld StreamLight client
+
+The November 21 import adds the original
+[client settings notes](docs/handheld/STREAMING-SETTINGS.md) and
+[October 31 VRR verification](docs/handheld/VRR-VERIFICATION-20261031.md).
+Read the verification first: it supersedes the settings document's earlier
+116 FPS experiment. The successful Docked request was 3840x2160 at 120 FPS,
+100 Mbps, HEVC HDR, hardware decoding, YUV 4:4:4 off, VSync and VRR on.
+The handheld work also saved Portable at 1920x1080/120 FPS, 40 Mbps, HEVC HDR
+4:2:0 and stereo audio, with VSync/VRR enabled. That preset had not yet been
+tested in a new undocked stream. Its historical rollback script is preserved,
+without the private registry export.
+
+The Docked session and the user's TV refresh readout supported active VRR.
+Its desktop-content average was about 42.7 FPS, so it did not establish sustained
+4K120 gameplay performance. TV-reported Dolby Vision did not establish a Dolby
+Vision encoded stream. These are historical observations, not new tests.
+
+The two original client rollback scripts are kept separately in
+[backups/handheld-2026-10-31](backups/handheld-2026-10-31/README.md).
+They restore earlier settings and should not be run as setup scripts. The raw
+logs, pairing data, complete registry exports and installed client are excluded.

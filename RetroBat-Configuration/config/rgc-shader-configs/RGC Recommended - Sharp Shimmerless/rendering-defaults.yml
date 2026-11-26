@@ -1,0 +1,4 @@
+## Retro Game Corps recommended: Sharp Shimmerless
+default:
+  shader: pixel-art-scaling/sharp-shimmerless
+  shaderGL: rgc/sharp-shimmerless

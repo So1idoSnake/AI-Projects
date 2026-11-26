@@ -1,0 +1,4 @@
+## Retro Game Corps recommended: CRT 1Tap
+default:
+  shader: crt/crt-1tap
+  shaderGL: crt/crt-1tap

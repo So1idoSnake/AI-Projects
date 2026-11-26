@@ -1,0 +1,4 @@
+## Retro Game Corps recommended example: CRT 1Tap Bloom
+default:
+  shader: crt/crt-1tap-bloom
+  shaderGL: crt/crt-1tap

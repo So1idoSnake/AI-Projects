@@ -1,0 +1,4 @@
+## Retro Game Corps recommended: ZFast CRT Geo S-Video
+default:
+  shader: crt/zfast-crt-geo-svideo
+  shaderGL: rgc/zfast_crt_geo_svideo

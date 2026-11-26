@@ -1,0 +1,4 @@
+## Retro Game Corps recommended: Bandlimit Pixel
+default:
+  shader: pixel-art-scaling/bandlimit-pixel
+  shaderGL: interpolation/bandlimit-pixel

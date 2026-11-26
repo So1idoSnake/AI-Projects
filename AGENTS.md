@@ -3,6 +3,9 @@
 Start with AI-START-HERE.md, then PROJECT_INDEX.md and the selected project's README/AGENTS.md.
 Use docs/ai/PROJECT-STANDARD.md for project structure and README expectations.
 This is a repository for code and related artifacts the user creates, not a chat-summary archive.
+For backups, preserve code/scripts and original assets created during the work.
+For third-party tools/mods and machine configuration, a README with sources and what was done
+is sufficient; do not bulk-copy downloads, installations or every file.
 Existing research/history folders remain as imported; do not add one folder per conversation.
 Keep actual source/build/config/test files accessible, with backups clearly separated.
 Commit task changes on a non-main branch; read-only tasks require no commit.
