@@ -7,7 +7,7 @@ The server runs on the existing Windows desktop and NTFS drives. Plex is the onl
 | Windows file sharing | `Transfer` and `Game Archive` use a named non-admin account. The SMB firewall rule is scoped to the wired home network. The custom drive-root shares were retired. |
 | Plex | Direct remote playback was verified from an iPhone on cellular with Mullvad connected. Video transcoding is disabled. The tested iPhone client needed Force Direct Play. |
 | Torrent workflow | Phone access to regular Radarr, Knaben interactive search, qBittorrent downloads, Radarr imports, and Plex indexing were verified with 1080p and 4K HDR movies. Sonarr and Small Movies are configured. Their full download and import checks are pending. |
-| Owner access over cellular | Tailscale installation and private access are pending. Sonarr and Radarr currently require the home network. |
+| Owner access over cellular | Tailscale is installed and paired with the iPhone. Private web links and cellular app checks are pending. Sonarr and Radarr currently require the home network. |
 | Usenet and family requests | NZBGet provider setup, stock Seerr review, and family access are planned. |
 
 ## Team and access preflight
@@ -64,6 +64,19 @@ Prowlarr syncs Knaben to Sonarr and both Radarr instances. These apps send selec
 ### Private Sonarr and Radarr access
 
 For the owner to use Sonarr and Radarr over cellular, install Tailscale on Windows and the iPhone and sign in to the same private network. Before enabling the private HTTPS links, replace temporary app passwords and restrict Tailscale access to those services. Keep SMB on the home LAN and Plex on its existing router rule. With Mullvad connected, test both app logins and confirm qBittorrent still uses Mullvad and Plex still plays directly over cellular. [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve) · [VPN compatibility](https://tailscale.com/docs/reference/faq/other-vpns)
+
+### Keep the Windows apps running
+
+[Keep-MediaServicesRunning.ps1](Keep-MediaServicesRunning.ps1) uses the existing per-user Startup shortcuts. Its scheduled task checks the apps at sign-in and every minute while the Windows account is signed in. It restarts stopped apps and logs port conflicts or running processes that lack a listener. A qBittorrent launch requires an active Mullvad connection and its matching interface setting. Tailscale and Mullvad run as separate Windows services with their own crash recovery.
+
+Run from the project folder under the Windows account that owns the Startup shortcuts.
+
+```powershell
+.\Keep-MediaServicesRunning.ps1 -InstallTask
+.\Keep-MediaServicesRunning.ps1 -CheckOnly
+```
+
+The installed copy and local log are under `%APPDATA%\WindowsMediaServer\Watchdog`. Add `-HoldApps Prowlarr` when installing if Windows is blocking Prowlarr. The hold is stored in `held-apps.txt`. Once the app can start, remove its line to resume its checks. Use Task Scheduler to disable **Windows Media Server Watchdog** before intentionally stopping the apps for maintenance.
 
 ## 3. Review the request interface and family access later
 
