@@ -19,7 +19,7 @@ Check legibility, touch targets, keyboard access, feedback for empty/error state
 
 - **Text:** simplest fallback; the owner handles requests manually.
 - **Plex Watchlist:** optional pilot in the familiar Plex app. Seerr's [Watchlist auto-request documentation](https://docs.seerr.dev/using-seerr/plex/watchlist-auto-request/) requires each user to sign in to Seerr with Plex, receive the relevant auto-request permissions, and enable the feature in their own profile. Requests are checked periodically; leave auto-approve permissions off and verify pending approval. Local users cannot use this feature.
-- **Private request page:** optional invite-only Tailscale Serve after testing coexistence with Mullvad. Configure restrictive access and test from an invited and an uninvited device. [Serve](https://tailscale.com/docs/features/tailscale-serve) exposes a local service to authorized tailnet users; [Tailscale cautions](https://tailscale.com/docs/reference/faq/other-vpns) that other VPNs often need workarounds. Keep texting if the test fails.
+- **Private request page.** The existing Tailscale routes serve the owner's Sonarr and Radarr pages. A family pilot would need an invite-only Seerr route with access limited to that page. With Mullvad connected, verify that an invited device can open Seerr and submit a request for approval. Confirm the invited device is denied access to Sonarr and Radarr and the uninvited device is denied access to Seerr. Keep texting if the test fails. [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve) · [VPN compatibility](https://tailscale.com/docs/reference/faq/other-vpns)
 
 ## Decision gate
 

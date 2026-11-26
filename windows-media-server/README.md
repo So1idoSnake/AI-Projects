@@ -1,13 +1,13 @@
 # Windows home media server
 
-The server runs on the existing Windows desktop and NTFS drives. Plex is the only service published through the router. File shares and the Sonarr and Radarr pages are available on the home network. The download pipeline uses native Windows apps and manual release selection.
+The server runs on the existing Windows desktop and NTFS drives. Plex is the only service published through the router. File shares stay on the home network. The owner can use Sonarr and regular Radarr from the home network or over private Tailscale HTTPS. The download pipeline uses native Windows apps and manual release selection.
 
 | Area | Status |
 | --- | --- |
 | Windows file sharing | `Transfer` and `Game Archive` use a named non-admin account. The SMB firewall rule is scoped to the wired home network. The custom drive-root shares were retired. |
 | Plex | Direct remote playback was verified from an iPhone on cellular with Mullvad connected. Video transcoding is disabled. The tested iPhone client needed Force Direct Play. |
 | Torrent workflow | Phone access to regular Radarr, Knaben interactive search, qBittorrent downloads, Radarr imports, and Plex indexing were verified with 1080p and 4K HDR movies. Sonarr and Small Movies are configured. Their full download and import checks are pending. |
-| Owner access over cellular | Tailscale is installed and paired with the iPhone. Private web links and cellular app checks are pending. Sonarr and Radarr currently require the home network. |
+| Owner access over cellular | The owner's iPhone reached both private Tailscale sign-in pages over cellular with Wi-Fi off. Both app logins were verified through Tailscale HTTPS. |
 | Usenet and family requests | NZBGet provider setup, stock Seerr review, and family access are planned. |
 
 ## Team and access preflight
@@ -63,7 +63,9 @@ Prowlarr syncs Knaben to Sonarr and both Radarr instances. These apps send selec
 
 ### Private Sonarr and Radarr access
 
-For the owner to use Sonarr and Radarr over cellular, install Tailscale on Windows and the iPhone and sign in to the same private network. Before enabling the private HTTPS links, replace temporary app passwords and restrict Tailscale access to those services. Keep SMB on the home LAN and Plex on its existing router rule. With Mullvad connected, test both app logins and confirm qBittorrent still uses Mullvad and Plex still plays directly over cellular. [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve) · [VPN compatibility](https://tailscale.com/docs/reference/faq/other-vpns)
+Tailscale Serve proxies HTTPS port `443` to Sonarr on Windows loopback port `8989` and HTTPS port `8443` to regular Radarr on loopback port `7878`. Both routes are tailnet-only. The Windows server and the owner's iPhone use the same tailnet. Small Movies stays on the home LAN, and Plex remote playback uses its existing router rule.
+
+See [iPhone access and password changes](download-setup.md#open-sonarr-and-radarr-on-the-iphone) for finding the actual URLs, checking cellular access and keeping separate logins in a password manager. After changing VPN settings, repeat the cellular login checks and verify that qBittorrent is still bound to Mullvad and Plex still plays directly over cellular. [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve) · [VPN compatibility](https://tailscale.com/docs/reference/faq/other-vpns)
 
 ### Keep the Windows apps running
 

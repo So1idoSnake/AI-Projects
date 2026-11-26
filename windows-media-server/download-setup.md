@@ -4,19 +4,40 @@ The torrent route is running on Windows. Use this runbook to pick a release from
 
 ## Torrent-only trial
 
-Knaben is the active indexer in Prowlarr, and qBittorrent is bound to Mullvad. `Prepare-DownloadSetup.ps1 -TorrentOnly` previews the three library routes and torrent folders. Add `-CreateFolders` when staging a new installation. Use the **Media Server** desktop shortcuts or open the picker pages from a device on the home network with `http://<server-LAN-IP>:<port>`. Use each app's saved login. Temporary credentials are replaced from **Settings → General → Security** in Sonarr and Radarr.
+Knaben is the active indexer in Prowlarr, and qBittorrent is bound to Mullvad. `Prepare-DownloadSetup.ps1 -TorrentOnly` previews the three library routes and torrent folders. Add `-CreateFolders` when staging a new installation. Use the **Media Server** desktop shortcuts or open the picker pages from a device on the home network with `http://<server-LAN-IP>:<port>`. The owner can also open Sonarr and regular Radarr over private Tailscale HTTPS.
 
 | Page | Port | Access | Use |
 | --- | ---: | --- | --- |
-| Sonarr | 8989 | Home LAN | Find a show or episode and pick a release. |
-| Radarr | 7878 | Home LAN | Import into Movies. Use the `4K HDR (manual)` profile for HDR titles. |
+| Sonarr | 8989 | Home LAN and private Tailscale HTTPS on `443` | Find a show or episode and pick a release. |
+| Radarr | 7878 | Home LAN and private Tailscale HTTPS on `8443` | Import into Movies. Use the `4K HDR (manual)` profile for HDR titles. |
 | Radarr Small Movies | 7879 | Home LAN | Choose the `Small Movies (720p-1080p)` profile for a requested travel copy. |
 | Prowlarr | 9696 | Windows desktop only | Check Knaben status and the manual-only sync profile. |
 | qBittorrent | 8080 | Windows desktop only | Watch queued and active downloads. New jobs use their category paths. |
 
+### Open Sonarr and Radarr on the iPhone
+
+1. Connect Tailscale on the iPhone to the same tailnet as the Windows server. On the server, run `tailscale serve status` to find the full HTTPS URLs. Sonarr uses `https://<server-tailnet-name>` and Radarr uses `https://<server-tailnet-name>:8443`. Both should be marked **tailnet only**.
+2. For a cellular check, switch off Wi-Fi and open both links in Safari. Sign in to each app. The owner reached both sign-in pages this way with Mullvad connected on Windows.
+3. To replace a temporary password, create separate **Sonarr** and **Radarr** entries in the password manager. Save each entry with its full HTTPS URL, existing app username and a unique generated password. In each app, open **Settings → General → Security**, paste the new password into **Password** and **Password Confirmation**, and tap **Save Changes**.
+4. In a private Safari tab, test each login using the corresponding saved entry. Both URLs share a hostname, so pick the entry by name if AutoFill offers the other one. The Windows desktop login shortcut reads its own saved copy, which can become stale after changing an app password in Safari. Use the password manager for the new passwords.
+
+Taildrop returned `502 Bad Gateway` during the password handoff test, even for a file with no credentials.
+
+#### Restore the private HTTPS routes on Windows
+
+With Windows and the iPhone joined to the same tailnet, enable HTTPS in the Tailscale admin console if prompted. Confirm the local Sonarr and Radarr web apps require a login, then register the two background routes in PowerShell.
+
+```powershell
+tailscale serve --bg --yes --https=443 http://127.0.0.1:8989
+tailscale serve --bg --yes --https=8443 http://127.0.0.1:7878
+tailscale serve status
+```
+
+Check for **tailnet only** on both routes. Keep the public Plex router mapping separate and run the iPhone cellular check after restoring the routes. [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve)
+
 ### Pick a movie from the iPhone
 
-1. Join home Wi-Fi and open regular Radarr or Small Movies. Add the movie to the intended library and leave **Start search for missing movie** unchecked.
+1. Open regular Radarr over Tailscale or from home Wi-Fi. For Small Movies, join home Wi-Fi and open its separate Radarr page. Add the movie to the intended library and leave **Start search for missing movie** unchecked.
 2. Tap the poster to open the detail page. Select **Interactive Search**, the person-shaped icon in the movie toolbar. The **Search Movie** magnifying-glass button uses automatic search, which is disabled in the Knaben sync profile.
 3. Check the quality, size, seeder count, and any rejection reasons. On a narrow phone, drag left across the results table to reach the last column. Tap the first icon in that column for the desired row. Its label is **Add to Download Queue**. [Radarr's queue button](https://github.com/Radarr/Radarr/blob/v7.0.3.10918/frontend/src/InteractiveSearch/InteractiveSearchRow.tsx#L284-L309)
 4. Follow the download in **Activity → Queue**. After import, open the corresponding library in Plex. Use **Movies** for regular Radarr and **Travel Movies** for Small Movies.
