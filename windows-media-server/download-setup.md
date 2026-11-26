@@ -1,0 +1,73 @@
+# Windows download setup
+
+Use this runbook on the server after the [Windows, router and device checks](README.md) pass and the owner authorizes the live build. The local plan can be reviewed while provider choices are open. A working torrent route and a working Usenet route can be tested independently.
+
+## Torrent-only trial
+
+Start with Knaben in Prowlarr and qBittorrent bound to Mullvad. `Prepare-DownloadSetup.ps1 -TorrentOnly` previews the three library routes and torrent folders. Add `-CreateFolders` when ready to create them. Use the **Media Server** folder on the Windows desktop to open the stock browser pages. The login shortcut opens the page and copies its local password for the `media-admin` account.
+
+| Page | Port | Use |
+| --- | ---: | --- |
+| Sonarr | 8989 | Find a show or episode and pick a release. |
+| Radarr | 7878 | Choose regular Movies or the `4K HDR (manual)` profile for an HDR title. |
+| Radarr Small Movies | 7879 | Choose the `Small Movies (720p-1080p)` profile for a requested travel copy. |
+| Prowlarr | 9696 | Check Knaben status and the manual-only sync profile. |
+| qBittorrent | 8080 | Watch queued and active downloads. New jobs use their category paths. |
+
+Use **Interactive Search** and choose the individual release after checking size and format. Leave **Search on Add** unchecked. Knaben is synced with interactive search enabled and automatic search and RSS grabbing disabled. The 4K HDR profile uses the release's `HDR` or `HDR10` label for filtering. Confirm the imported file's format with Plex Media Info before relying on Direct Play. Keep the TV, regular movie, and travel tests separate. [Radarr search workflow](https://wiki.servarr.com/radarr/faq)
+
+## Provider decisions
+
+| Input | What to confirm before connecting |
+| --- | --- |
+| Torrent tracker or torrent indexer | Which catalog supplies torrent results? Check Prowlarr support, permitted automation, API access and limits. For private trackers, check invitation or membership requirements, approved clients, VPN rules and minimum seeding obligations. |
+| NZB indexer | Which catalog supplies NZBs? Verify its Newznab endpoint or supported Prowlarr definition, API entitlement, query and grab quotas, and available TV/movie categories. |
+| Usenet provider | Which host serves the articles listed in an NZB? Record the provider's TLS hostname and port, maximum simultaneous connections, speed or usage cap, retention and any block balance. An NZB indexer and an article provider each need a successful test. |
+
+Leave each choice open until the owner decides. If a friend mentions a paid service, check whether its plan permits a separately authorized member or individual login for this client's use. Enter credentials only in the appropriate local UI or password manager. Keep invite links, tracker passkeys, NZB URLs, API keys, passwords and unredacted configuration backups out of Git, chat and screenshots.
+
+## 1. Prepare the Windows session and folders
+
+1. Sign in to the existing Plex desktop account. Review [DownloadPlan.psd1](DownloadPlan.psd1) with [Prepare-DownloadSetup.ps1](Prepare-DownloadSetup.ps1). Its default mode previews the folders. Use `-CreateFolders` only for the approved live setup. Check that `E:` is the intended local NTFS volume with space for incomplete files, unpacking and finished media. Use the desktop account's existing access or grant it Modify only where needed.
+2. Capture a baseline privately before changing qBittorrent. Record its version, existing save and incomplete paths, category paths, management modes, queue order/limits, seed rules and representative job states. Exit it cleanly and back up the active profile's configuration and resume data (including any torrent database or `BT_backup` directory). Keep the backup outside writable shares. Record existing Plex library roots. [qBittorrent profile locations](https://github.com/qbittorrent/qBittorrent/wiki/Frequently-Asked-Questions)
+3. Use official Windows builds. Select the tray option for Prowlarr, Sonarr and Radarr. Run NZBGet from its desktop shortcut and reuse the existing qBittorrent profile. Connect Mullvad before launching qBittorrent with the existing queue. Start each app once per signed-in session without elevation. Leave Windows automatic login off. Hold on a port collision or an existing service until its owner and configuration are identified. [Prowlarr Windows install](https://wiki.servarr.com/prowlarr/installation/windows) · [Sonarr Windows install](https://sonarr.tv/#downloads-v4-windows) · [NZBGet Windows install](https://nzbget.com/documentation/installation-on-windows/)
+4. Keep inbound app access blocked during first-run setup. Set the bind address to `127.0.0.1` in each admin UI, restart as required and require credentials even for local connections. Use unique secrets, disable localhost/subnet authentication bypasses and leave the router's sole public mapping on Plex TCP `32400`. Verify the listeners before entering provider credentials.
+
+All paths below are relative to `E:\MediaServer`. Give **each** of `Downloads\Torrents` and `Downloads\Usenet` its own `Incomplete`, `manual`, `tv`, `movies` and `movies-small` subfolders. Only library roots belong in Plex.
+
+| Importer | Local port | Category in both clients | Library root |
+| --- | ---: | --- | --- |
+| Sonarr | 8989 | `tv` | `Library\TV` |
+| Radarr | 7878 | `movies` | `Library\Movies` |
+| Radarr Small Movies | 7879 | `movies-small` | `Library\Small Movies` |
+
+## 2. Configure the download clients
+
+**qBittorrent.** With Mullvad connected and auto-connect enabled, choose its actual adapter in **Tools → Options → Advanced → Network interface**, apply and restart qBittorrent. Keep the Plex split-tunnel exclusion and Mullvad LAN sharing. Keep qBittorrent inside the tunnel. Disable automatic UPnP/NAT-PMP mapping under Connection and any Web UI port-mapping option. Set the Web UI address to `127.0.0.1`, port `8080`, require a password and keep the normal Web UI security protections enabled. [qBittorrent VPN binding](https://github.com/qbittorrent/wiki/blob/master/How-to-bind-your-vpn-to-prevent-ip-leaks.md)
+
+For **new** torrents, create the four completed categories with explicit absolute save paths. Use the matching category's incomplete/download-path override for `Downloads\Torrents\Incomplete` where available. Use `manual` for new hand-added jobs. Preserve existing categories, paths, seeding rules, queue priorities and job states. If a category is already in use, an incomplete-path control is global, or a change would relocate existing jobs, hold that change until the affected jobs have finished or the owner approves a migration. Check the first new job's actual temporary and final paths. Leave existing jobs out of the import categories, and use normal queueing for new jobs. [qBittorrent saving and queue preferences](https://github.com/qbittorrent/qBittorrent/blob/master/src/webui/www/private/views/preferences.html)
+
+**NZBGet.** Set `ControlIP=127.0.0.1`, `ControlPort=6789`, a unique control password and an empty `AuthorizedIP` bypass list. Set `InterDir` to the absolute Usenet `Incomplete` path and `DestDir` to the absolute Usenet `manual` path. Define all four categories with their own explicit `DestDir`. Set the provider's hostname, TLS port, login and permitted connection count. Enable `Server1.Encryption` and `CertCheck`. Save, reload and run the server connection test. If verification fails, resolve the hostname, certificate chain or clock before downloading. Leave extra sorting, cleanup and post-processing extensions disabled for this pilot. [NZBGet configuration](https://github.com/nzbgetcom/nzbget/blob/develop/nzbget.conf) · [Certificate verification](https://nzbget.com/documentation/certificate-verification/)
+
+## 3. Connect the importers and Prowlarr
+
+1. Use one installed Radarr executable with two per-user startup shortcuts. Give **both** explicit `/data=` arguments naming distinct, private app-data directories. Use the main instance's actual path and a fresh directory for Small Movies. With main stopped, start Small alone, set its name, loopback bind and port `7879`, then stop it. Designate main as the sole shared-binary updater. Servarr's Windows procedure sets `<Branch>nonexistent</Branch>` in the stopped **Small Movies** instance's private `config.xml`. Start both and verify each UI's name, port and app-data path. After a main update, restart Small if needed and verify both report the new version. [Radarr Windows multi-instance instructions](https://github.com/Servarr/Wiki/blob/master/radarr/installation/multiple-instances.md)
+2. In each importer set the table's root folder. Add both clients under **Settings → Download Clients** using the loopback addresses, credentials and category for that importer. Test each entry. Enable Completed Download Handling and **Use Hardlinks instead of Copy**. Disable per-client Remove Completed and Remove Failed, and automatic deletion on seed completion. Usenet imports can move the completed video out of staging. A torrent still seeding should keep its staging entry with a hardlink into the library. [Sonarr imports](https://wiki.servarr.com/sonarr/settings) · [Radarr imports](https://wiki.servarr.com/en/radarr/quick-start-guide)
+3. In Prowlarr on port `9696`, add and test each chosen indexer. Under **Settings → Apps**, add Sonarr, Radarr and Radarr Small Movies separately with loopback URLs and each instance's own API key. Choose Full Sync, test and sync. Full Sync can overwrite downstream edits to indexer settings. Manage supported search categories and sync profiles in Prowlarr. Verify all three connections, then open each importer and check that the expected TV or movie indexers returned results. Configure client connections in each importer for jobs it submits. [Prowlarr application sync](https://wiki.servarr.com/prowlarr/settings)
+4. Restrict Small Movies to owner-selected, unmonitored titles. Disable RSS grabbing on this instance (RSS sync interval zero), leave search-on-add and upgrades off, and use Interactive Search. Keep lists and Seerr disconnected from this instance. Start with a 720p/1080p profile and use **Settings → Indexers → Options → Maximum Size** on Small only. For a decimal 3 GB ceiling use a conservative `2861` MB and accept only releases with a known size at or below 3,000,000,000 bytes. Radarr skips its release-size check when the indexer supplies zero. Leave rejected or unknown-size results unselected. Prefer SDR H.264 video, stereo AAC and MP4. Verify the actual file size and codecs after import. [Radarr size and RSS settings](https://wiki.servarr.com/radarr/settings) · [Radarr release-size check](https://github.com/Radarr/Radarr/blob/develop/src/NzbDrone.Core/DecisionEngine/Specifications/MaximumSizeSpecification.cs)
+5. Add the TV and Movies import roots to the matching Plex libraries. Create **Travel Movies** for the new Small Movies root. Keep the existing `E:\SmallMovies` Plex library and its contents in place. Keep video transcoding disabled. Use Original quality for tests. Plex can remux the container or convert audio while preserving the original video. [Plex playback modes](https://support.plex.tv/articles/200250387-streaming-media-direct-play-and-direct-stream/)
+
+## 4. Verify before enabling ordinary use
+
+Use distinct, authorized sample titles recognized by the relevant importer. For each cell below, select a release from the indicated protocol in the correct app. Observe its category, incomplete path, completed path, import history and library destination. Mark an unavailable provider route **pending**. A successful client connection test alone cannot prove import.
+
+| Origin | qBittorrent result | NZBGet result |
+| --- | --- | --- |
+| Sonarr | `Torrents\tv` → `Library\TV` | `Usenet\tv` → `Library\TV` |
+| Radarr | `Torrents\movies` → `Library\Movies` | `Usenet\movies` → `Library\Movies` |
+| Owner in Radarr Small Movies | `Torrents\movies-small` → `Library\Small Movies` | `Usenet\movies-small` → `Library\Small Movies` |
+
+- **Routing and storage.** Verify the other importers ignore each job and all three ignore `manual`. While a sample is seeding, run `fsutil hardlink list "<full path to imported video>"`. Both staging and library names must appear. If only one appears, check the volume, NTFS permissions and importer hardlink setting before adding more jobs. Check the old qBittorrent entries against the baseline. [Windows hardlink verification](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/fsutil-hardlink)
+- **VPN and Plex.** With an authorized sample actively transferring, disconnect Mullvad. Confirm traffic stops and the sample's transferred bytes stop increasing once in-flight data settles. Reconnect and verify transfer resumes on its bound interface. Hold new torrent jobs if transfer continues or the interface has disappeared. With Mullvad connected, confirm a phone on cellular can still play a Plex title over a **direct remote connection**. In the Plex dashboard also verify that video uses Direct Play or Direct Stream.
+- **Travel.** Confirm the expected title appears in Travel Movies and the imported video meets the size and codec checks. Download or transfer the original to the intended travel device, disable its networks and play it offline. Leave any file requiring video conversion out of the travel test result.
+- **Restart and access.** Reboot during the approved test window, manually sign in and verify the six authenticated admin UIs at their assigned loopback ports. A fresh private browser session must prompt for login. Check the listeners for wildcard or LAN binds and confirm another LAN device cannot connect to those six ports. Verify both Radarr identities, qBittorrent's VPN bind and the original queue, then back up the working private configurations. Stop at the first failed check for that route and retain the sample or queue entry for diagnosis.
