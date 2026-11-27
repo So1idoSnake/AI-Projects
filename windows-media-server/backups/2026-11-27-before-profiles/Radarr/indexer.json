@@ -1,0 +1,259 @@
+[
+  {
+    "enableRss": true,
+    "enableAutomaticSearch": true,
+    "enableInteractiveSearch": true,
+    "supportsRss": true,
+    "supportsSearch": true,
+    "protocol": "usenet",
+    "priority": 25,
+    "downloadClientId": "[REDACTED]",
+    "name": "altHUB (Prowlarr)",
+    "fields": [
+      {
+        "name": "baseUrl",
+        "value": "http://127.0.0.1:9696/3/"
+      },
+      {
+        "name": "apiPath",
+        "value": "/api"
+      },
+      {
+        "name": "apiKey",
+        "value": "[REDACTED]"
+      },
+      {
+        "name": "categories",
+        "value": [
+          2000,
+          2060,
+          2050,
+          2010,
+          2040,
+          2020,
+          2030,
+          2045
+        ]
+      },
+      {
+        "name": "additionalParameters",
+        "value": null
+      },
+      {
+        "name": "multiLanguages",
+        "value": []
+      },
+      {
+        "name": "failDownloads",
+        "value": []
+      },
+      {
+        "name": "removeYear",
+        "value": false
+      }
+    ],
+    "implementationName": "Newznab",
+    "implementation": "Newznab",
+    "configContract": "NewznabSettings",
+    "tags": [],
+    "id": 3
+  },
+  {
+    "enableRss": true,
+    "enableAutomaticSearch": true,
+    "enableInteractiveSearch": true,
+    "supportsRss": true,
+    "supportsSearch": true,
+    "protocol": "usenet",
+    "priority": 25,
+    "downloadClientId": "[REDACTED]",
+    "name": "DrunkenSlug (Prowlarr)",
+    "fields": [
+      {
+        "name": "baseUrl",
+        "value": "http://127.0.0.1:9696/2/"
+      },
+      {
+        "name": "apiPath",
+        "value": "/api"
+      },
+      {
+        "name": "apiKey",
+        "value": "[REDACTED]"
+      },
+      {
+        "name": "categories",
+        "value": [
+          2000,
+          2060,
+          2050,
+          2070,
+          2010,
+          2040,
+          2020,
+          2030,
+          2045
+        ]
+      },
+      {
+        "name": "additionalParameters",
+        "value": null
+      },
+      {
+        "name": "multiLanguages",
+        "value": []
+      },
+      {
+        "name": "failDownloads",
+        "value": []
+      },
+      {
+        "name": "removeYear",
+        "value": false
+      }
+    ],
+    "implementationName": "Newznab",
+    "implementation": "Newznab",
+    "configContract": "NewznabSettings",
+    "tags": [],
+    "id": 4
+  },
+  {
+    "enableRss": false,
+    "enableAutomaticSearch": false,
+    "enableInteractiveSearch": true,
+    "supportsRss": true,
+    "supportsSearch": true,
+    "protocol": "torrent",
+    "priority": 25,
+    "downloadClientId": "[REDACTED]",
+    "name": "Knaben (Prowlarr)",
+    "fields": [
+      {
+        "name": "baseUrl",
+        "value": "http://127.0.0.1:9696/1/"
+      },
+      {
+        "name": "apiPath",
+        "value": "/api"
+      },
+      {
+        "name": "apiKey",
+        "value": "[REDACTED]"
+      },
+      {
+        "name": "categories",
+        "value": [
+          2000,
+          2040,
+          2030,
+          2045,
+          2070,
+          2010,
+          2060,
+          2020
+        ]
+      },
+      {
+        "name": "additionalParameters",
+        "value": null
+      },
+      {
+        "name": "multiLanguages",
+        "value": []
+      },
+      {
+        "name": "failDownloads",
+        "value": []
+      },
+      {
+        "name": "removeYear",
+        "value": false
+      },
+      {
+        "name": "minimumSeeders",
+        "value": 1
+      },
+      {
+        "name": "seedCriteria.seedRatio",
+        "value": null
+      },
+      {
+        "name": "seedCriteria.seedTime",
+        "value": null
+      },
+      {
+        "name": "rejectBlocklistedTorrentHashesWhileGrabbing",
+        "value": false
+      },
+      {
+        "name": "requiredFlags",
+        "value": []
+      }
+    ],
+    "implementationName": "Torznab",
+    "implementation": "Torznab",
+    "configContract": "TorznabSettings",
+    "tags": [],
+    "id": 1
+  },
+  {
+    "enableRss": true,
+    "enableAutomaticSearch": true,
+    "enableInteractiveSearch": true,
+    "supportsRss": true,
+    "supportsSearch": true,
+    "protocol": "usenet",
+    "priority": 25,
+    "downloadClientId": "[REDACTED]",
+    "name": "NinjaCentral (Prowlarr)",
+    "fields": [
+      {
+        "name": "baseUrl",
+        "value": "http://127.0.0.1:9696/4/"
+      },
+      {
+        "name": "apiPath",
+        "value": "/api"
+      },
+      {
+        "name": "apiKey",
+        "value": "[REDACTED]"
+      },
+      {
+        "name": "categories",
+        "value": [
+          2000,
+          2060,
+          2050,
+          2010,
+          2040,
+          2020,
+          2030,
+          2045
+        ]
+      },
+      {
+        "name": "additionalParameters",
+        "value": null
+      },
+      {
+        "name": "multiLanguages",
+        "value": []
+      },
+      {
+        "name": "failDownloads",
+        "value": []
+      },
+      {
+        "name": "removeYear",
+        "value": false
+      }
+    ],
+    "implementationName": "Newznab",
+    "implementation": "Newznab",
+    "configContract": "NewznabSettings",
+    "tags": [],
+    "id": 2
+  }
+]

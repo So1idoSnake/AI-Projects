@@ -1,0 +1,33 @@
+{
+  "Purpose": "Current configuration before quality profile changes",
+  "SecretScanPassed": true,
+  "Limitations": [
+    "Credentials and personal databases are local only.",
+    "Sanitized JSON files are reference exports, not drop-in native restore archives.",
+    "Media content and third-party installations are not included."
+  ],
+  "CreatedUtc": "2026-11-27T18:45:53.4565915Z",
+  "PrivateBackup": "%LOCALAPPDATA%\\WindowsMediaServer\\Backups\\BeforeProfiles-20261127T183504Z",
+  "ApplicationBackups": [
+    {
+      "App": "Prowlarr",
+      "NativeBackupVerified": true,
+      "File": "prowlarr_backup_v3.1.0.5799_2026.11.27_13.32.25.zip"
+    },
+    {
+      "App": "Sonarr",
+      "NativeBackupVerified": true,
+      "File": "sonarr_backup_v4.0.20.3014_2026.11.27_13.32.25.zip"
+    },
+    {
+      "App": "Radarr",
+      "NativeBackupVerified": true,
+      "File": "radarr_backup_v7.0.3.10918_2026.11.27_13.35.04.zip"
+    },
+    {
+      "App": "Radarr Small Movies",
+      "NativeBackupVerified": true,
+      "File": "radarr_backup_v7.0.3.10918_2026.11.27_13.32.25.zip"
+    }
+  ]
+}

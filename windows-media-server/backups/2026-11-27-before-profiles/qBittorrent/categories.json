@@ -1,0 +1,34 @@
+{
+  "manual": {
+    "download_path": "E:/MediaServer/Downloads/Torrents/Incomplete",
+    "inactive_seeding_time_limit": -2,
+    "ratio_limit": -2,
+    "save_path": "E:/MediaServer/Downloads/Torrents/manual",
+    "seeding_time_limit": -2,
+    "share_limit_action": "Default"
+  },
+  "movies": {
+    "download_path": "E:/MediaServer/Downloads/Torrents/Incomplete",
+    "inactive_seeding_time_limit": -2,
+    "ratio_limit": -2,
+    "save_path": "E:/MediaServer/Downloads/Torrents/movies",
+    "seeding_time_limit": -2,
+    "share_limit_action": "Default"
+  },
+  "movies-small": {
+    "download_path": "E:/MediaServer/Downloads/Torrents/Incomplete",
+    "inactive_seeding_time_limit": -2,
+    "ratio_limit": -2,
+    "save_path": "E:/MediaServer/Downloads/Torrents/movies-small",
+    "seeding_time_limit": -2,
+    "share_limit_action": "Default"
+  },
+  "tv": {
+    "download_path": "E:/MediaServer/Downloads/Torrents/Incomplete",
+    "inactive_seeding_time_limit": -2,
+    "ratio_limit": -2,
+    "save_path": "E:/MediaServer/Downloads/Torrents/tv",
+    "seeding_time_limit": -2,
+    "share_limit_action": "Default"
+  }
+}

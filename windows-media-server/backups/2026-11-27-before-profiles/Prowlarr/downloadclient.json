@@ -1,0 +1,51 @@
+{
+  "enable": true,
+  "protocol": "usenet",
+  "priority": 1,
+  "categories": [],
+  "supportsCategories": true,
+  "name": "NZBGet",
+  "fields": [
+    {
+      "name": "host",
+      "value": "127.0.0.1"
+    },
+    {
+      "name": "port",
+      "value": 6789
+    },
+    {
+      "name": "useSsl",
+      "value": false
+    },
+    {
+      "name": "urlBase",
+      "value": null
+    },
+    {
+      "name": "username",
+      "value": "[REDACTED]"
+    },
+    {
+      "name": "password",
+      "value": "[REDACTED]"
+    },
+    {
+      "name": "category",
+      "value": "manual"
+    },
+    {
+      "name": "priority",
+      "value": 0
+    },
+    {
+      "name": "addPaused",
+      "value": false
+    }
+  ],
+  "implementationName": "NZBGet",
+  "implementation": "Nzbget",
+  "configContract": "NzbgetSettings",
+  "tags": [],
+  "id": 1
+}

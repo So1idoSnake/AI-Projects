@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory, ParameterSetName = 'Install')]
     [switch]$InstallTask,
     [Parameter(ParameterSetName = 'Install')]
-    [ValidateSet('Plex Media Server', 'Prowlarr', 'Sonarr', 'Radarr', 'Radarr Small Movies', 'qBittorrent')]
+    [ValidateSet('Plex Media Server', 'Prowlarr', 'Sonarr', 'Radarr', 'Radarr Small Movies', 'qBittorrent', 'NZBGet')]
     [string[]]$HoldApps,
     [Parameter(ParameterSetName = 'Watch')]
     [switch]$CheckOnly
@@ -73,6 +73,7 @@ $apps = @(
     @{ Name = 'Sonarr'; Shortcut = 'Windows Media Server - Sonarr.lnk'; Port = 8989 },
     @{ Name = 'Radarr'; Shortcut = 'Windows Media Server - Radarr.lnk'; Port = 7878 },
     @{ Name = 'Radarr Small Movies'; Shortcut = 'Windows Media Server - Radarr Small Movies.lnk'; Port = 7879 },
+    @{ Name = 'NZBGet'; Shortcut = 'Windows Media Server - NZBGet.lnk'; Port = 6789 },
     @{ Name = 'qBittorrent'; Shortcut = 'Windows Media Server - qBittorrent.lnk'; Port = 8080 }
 )
 
