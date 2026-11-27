@@ -1,14 +1,16 @@
 # Windows home media server
 
-The server runs on the existing Windows desktop and NTFS drives. Plex is the only service published through the router. File shares and the Sonarr and Radarr pages are available on the home network. The download pipeline uses native Windows apps and manual release selection.
+The server runs on the existing Windows desktop and NTFS drives. Plex is the only service published through the router. File shares stay on the home network. The owner can use Sonarr and regular Radarr from the home network or over private Tailscale HTTPS. The download pipeline uses native Windows apps and manual release selection.
 
 | Area | Status |
 | --- | --- |
 | Windows file sharing | `Transfer` and `Game Archive` use a named non-admin account. The SMB firewall rule is scoped to the wired home network. The custom drive-root shares were retired. |
 | Plex | Direct remote playback was verified from an iPhone on cellular with Mullvad connected. Video transcoding is disabled. The tested iPhone client needed Force Direct Play. |
 | Torrent workflow | Phone access to regular Radarr, Knaben interactive search, qBittorrent downloads, Radarr imports, and Plex indexing were verified with 1080p and 4K HDR movies. Sonarr and Small Movies are configured. Their full download and import checks are pending. |
-| Owner access over cellular | Tailscale installation and private access are pending. Sonarr and Radarr currently require the home network. |
-| Usenet and family requests | NZBGet provider setup, stock Seerr review, and family access are planned. |
+| Owner access over cellular | The owner's iPhone reached both private Tailscale sign-in pages over cellular with Wi-Fi off. Both app logins were verified through Tailscale HTTPS. |
+| Usenet | NZBGet 26.3 uses Newshosting over certificate-verified TLS. DrunkenSlug, altHUB, and NinjaCentral are connected through Prowlarr to Sonarr and both Radarr instances. Authentication/search and client connections passed; a full Usenet download/import/playback test remains pending. |
+| Backup and profiles | The configuration before the profile overhaul is preserved in a sanitized Git snapshot and private native recovery set. See [backup and recovery](backup-and-restore.md). |
+| Family requests | Stock Seerr review and family access are planned. |
 
 ## Team and access preflight
 
@@ -46,7 +48,7 @@ Use the [download setup runbook](download-setup.md) for phone access, manual rel
 
 The preview checks the local NTFS path and reports observed TCP listeners. Once live setup is authorized, `-CreateFolders -WhatIf` previews the creation and `-CreateFolders` creates missing directories. Add `-TorrentOnly` to stage the torrent routes for the Knaben trial. If you override `-MediaRoot`, use an existing parent on a fixed local NTFS drive. [Torrent trial workflow](download-setup.md#torrent-only-trial)
 
-Prowlarr syncs Knaben to Sonarr and both Radarr instances. These apps send selected releases to qBittorrent, then import finished files. NZBGet is the planned Usenet client. Staging and library data use local paths under `E:\MediaServer`. [Prowlarr quick start](https://wiki.servarr.com/en/prowlarr/quick-start-guide) · [Radarr quick start](https://wiki.servarr.com/en/radarr/quick-start-guide)
+Prowlarr syncs Knaben to Sonarr and both Radarr instances. These apps send selected releases to qBittorrent, then import finished files. NZBGet is the installed Usenet client using Newshosting. DrunkenSlug, altHUB, and NinjaCentral use the Standard Prowlarr sync profile for RSS, automatic, and interactive searches. Knaben keeps its manual trial profile. Staging and library data use local paths under `E:\MediaServer`. [Prowlarr quick start](https://wiki.servarr.com/en/prowlarr/quick-start-guide) · [Radarr quick start](https://wiki.servarr.com/en/radarr/quick-start-guide)
 
 | App | Local port | Download category | Import destination |
 | --- | --- | --- | --- |
@@ -55,15 +57,34 @@ Prowlarr syncs Knaben to Sonarr and both Radarr instances. These apps send selec
 | Radarr Small Movies | `7879` | `movies-small` | `Library\Small Movies` |
 
 - Stage files under `Downloads\Torrents` and `Downloads\Usenet`, with category subfolders and separate incomplete folders. Keep staging and imports on the same NTFS volume for hardlinks and moves. Preserve the existing qBittorrent queue and Plex paths. Start with completed-download handling on and automatic cleanup off.
-- Keep the apps bound to `127.0.0.1` with authentication required. Windows forwards the three picker ports in the table only on the reserved home LAN address, with firewall rules scoped to the wired adapter and home subnet. Prowlarr on `9696` and qBittorrent on `8080` remain desktop-only. The reserved NZBGet port is `6789`.
-- Keep Mullvad auto-connect enabled, bind qBittorrent to the Mullvad interface, and disable qBittorrent automatic port mapping. Set **Tools → On Downloads Done → Do Nothing** so Radarr and Sonarr can reach qBittorrent after transfers finish. Use certificate-verified TLS for Usenet when configured. The torrent apps use per-user startup shortcuts and start without elevation after Windows sign-in. [qBittorrent VPN binding](https://github.com/qbittorrent/wiki/blob/master/How-to-bind-your-vpn-to-prevent-ip-leaks.md) · [NZBGet certificate verification](https://nzbget.com/documentation/certificate-verification/)
+- Keep the apps bound to `127.0.0.1` with authentication required. Windows forwards the three picker ports in the table only on the reserved home LAN address, with firewall rules scoped to the wired adapter and home subnet. Prowlarr on `9696` and qBittorrent on `8080` remain desktop-only. NZBGet on `6789` remains desktop-only.
+- Keep Mullvad auto-connect enabled, bind qBittorrent to the Mullvad interface, and disable qBittorrent automatic port mapping. Set **Tools → On Downloads Done → Do Nothing** so Radarr and Sonarr can reach qBittorrent after transfers finish. Use certificate-verified TLS for Usenet when configured. The download apps use per-user startup shortcuts and start without elevation after Windows sign-in. [qBittorrent VPN binding](https://github.com/qbittorrent/wiki/blob/master/How-to-bind-your-vpn-to-prevent-ip-leaks.md) · [NZBGet certificate verification](https://nzbget.com/documentation/certificate-verification/)
 - Keep Small Movies opt-in. Give the second Radarr instance separate app data, a dedicated category, and a starter 720p/1080p profile capped at 3 GB per release. Use interactive search for individual requests. Keep library mirroring, automatic grabs, and upgrades off. Keep `E:\SmallMovies` in its existing Plex library and add the new import root as **Travel Movies**. [Radarr multiple instances](https://wiki.servarr.com/radarr/installation/multiple-instances) · [Radarr profiles](https://wiki.servarr.com/radarr/settings)
 - Choose small copies that are already encoded for travel devices. Start with SDR H.264 video and stereo AAC in an MP4 container where available. Confirm the imported file's codecs and test playback on the travel device at Original quality before relying on it offline.
 - Finish the [verification checklist](download-setup.md#4-verify-before-enabling-ordinary-use) before treating the remaining routes as ready. Back up working configuration separately from writable shares.
 
+### Backup before profile changes
+
+[Backup-Setup.ps1](Backup-Setup.ps1) captures native app recovery archives privately and exports sanitized settings for Git. The [backup and restore guide](backup-and-restore.md) explains scope, consistency, local-only credentials/databases, and recovery steps. The [November 27 baseline](backups/2026-11-27-before-profiles) includes the existing quality profiles before overhaul.
+
 ### Private Sonarr and Radarr access
 
-For the owner to use Sonarr and Radarr over cellular, install Tailscale on Windows and the iPhone and sign in to the same private network. Before enabling the private HTTPS links, replace temporary app passwords and restrict Tailscale access to those services. Keep SMB on the home LAN and Plex on its existing router rule. With Mullvad connected, test both app logins and confirm qBittorrent still uses Mullvad and Plex still plays directly over cellular. [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve) · [VPN compatibility](https://tailscale.com/docs/reference/faq/other-vpns)
+Tailscale Serve proxies HTTPS port `443` to Sonarr on Windows loopback port `8989` and HTTPS port `8443` to regular Radarr on loopback port `7878`. Both routes are tailnet-only. The Windows server and the owner's iPhone use the same tailnet. Small Movies stays on the home LAN, and Plex remote playback uses its existing router rule.
+
+See [iPhone access and password changes](download-setup.md#open-sonarr-and-radarr-on-the-iphone) for finding the actual URLs, checking cellular access and keeping separate logins in a password manager. After changing VPN settings, repeat the cellular login checks and verify that qBittorrent is still bound to Mullvad and Plex still plays directly over cellular. [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve) · [VPN compatibility](https://tailscale.com/docs/reference/faq/other-vpns)
+
+### Keep the Windows apps running
+
+[Keep-MediaServicesRunning.ps1](Keep-MediaServicesRunning.ps1) uses the existing per-user Startup shortcuts. Its scheduled task checks the apps at sign-in and every minute while the Windows account is signed in. It restarts stopped apps and logs port conflicts or running processes that lack a listener. A qBittorrent launch requires an active Mullvad connection and its matching interface setting. Tailscale and Mullvad run as separate Windows services with their own crash recovery.
+
+Run from the project folder under the Windows account that owns the Startup shortcuts.
+
+```powershell
+.\Keep-MediaServicesRunning.ps1 -InstallTask
+.\Keep-MediaServicesRunning.ps1 -CheckOnly
+```
+
+The installed copy and local log are under `%APPDATA%\WindowsMediaServer\Watchdog`. Add `-HoldApps Prowlarr` when installing if Windows is blocking Prowlarr. The hold is stored in `held-apps.txt`. Once the app can start, remove its line to resume its checks. Use Task Scheduler to disable **Windows Media Server Watchdog** before intentionally stopping the apps for maintenance.
 
 ## 3. Review the request interface and family access later
 

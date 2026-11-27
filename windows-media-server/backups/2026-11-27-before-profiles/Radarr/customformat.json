@@ -1,0 +1,20 @@
+{
+  "id": 1,
+  "name": "HDR or HDR10 release label",
+  "includeCustomFormatWhenRenaming": false,
+  "specifications": [
+    {
+      "name": "HDR label",
+      "implementation": "ReleaseTitleSpecification",
+      "implementationName": "Release Title",
+      "negate": false,
+      "required": true,
+      "fields": [
+        {
+          "name": "value",
+          "value": "(?i)(?<![a-z0-9])HDR(?:10(?:\\+|plus)?)?(?![a-z0-9])"
+        }
+      ]
+    }
+  ]
+}

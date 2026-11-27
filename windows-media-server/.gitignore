@@ -1,0 +1,25 @@
+# Only reviewed, sanitized exports belong in this project.
+local-private/
+Private/
+LocalUiCredentials.json
+*.db
+*.db-*
+*.zip
+*.reg
+*.torrent
+*.fastresume
+*.log
+nzbget.conf
+qBittorrent.ini
+
+# Private key material and runtime state
+*.pfx
+*.p12
+*.key
+*.pem
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.bak
+*.tmp
+*.dmp

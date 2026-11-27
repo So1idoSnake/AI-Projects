@@ -1,0 +1,278 @@
+[
+  {
+    "enableRss": true,
+    "enableAutomaticSearch": true,
+    "enableInteractiveSearch": true,
+    "supportsRss": true,
+    "supportsSearch": true,
+    "protocol": "usenet",
+    "priority": 25,
+    "seasonSearchMaximumSingleEpisodeAge": 0,
+    "downloadClientId": "[REDACTED]",
+    "name": "altHUB (Prowlarr)",
+    "fields": [
+      {
+        "name": "baseUrl",
+        "value": "http://127.0.0.1:9696/3/"
+      },
+      {
+        "name": "apiPath",
+        "value": "/api"
+      },
+      {
+        "name": "apiKey",
+        "value": "[REDACTED]"
+      },
+      {
+        "name": "categories",
+        "value": [
+          5000,
+          5020,
+          5040,
+          5050,
+          5030,
+          5045
+        ]
+      },
+      {
+        "name": "animeCategories",
+        "value": [
+          5070
+        ]
+      },
+      {
+        "name": "animeStandardFormatSearch",
+        "value": true
+      },
+      {
+        "name": "additionalParameters",
+        "value": null
+      },
+      {
+        "name": "multiLanguages",
+        "value": []
+      },
+      {
+        "name": "failDownloads",
+        "value": []
+      }
+    ],
+    "implementationName": "Newznab",
+    "implementation": "Newznab",
+    "configContract": "NewznabSettings",
+    "tags": [],
+    "id": 3
+  },
+  {
+    "enableRss": true,
+    "enableAutomaticSearch": true,
+    "enableInteractiveSearch": true,
+    "supportsRss": true,
+    "supportsSearch": true,
+    "protocol": "usenet",
+    "priority": 25,
+    "seasonSearchMaximumSingleEpisodeAge": 0,
+    "downloadClientId": "[REDACTED]",
+    "name": "DrunkenSlug (Prowlarr)",
+    "fields": [
+      {
+        "name": "baseUrl",
+        "value": "http://127.0.0.1:9696/2/"
+      },
+      {
+        "name": "apiPath",
+        "value": "/api"
+      },
+      {
+        "name": "apiKey",
+        "value": "[REDACTED]"
+      },
+      {
+        "name": "categories",
+        "value": [
+          5000,
+          5020,
+          5040,
+          5050,
+          5030,
+          5045
+        ]
+      },
+      {
+        "name": "animeCategories",
+        "value": [
+          5070
+        ]
+      },
+      {
+        "name": "animeStandardFormatSearch",
+        "value": true
+      },
+      {
+        "name": "additionalParameters",
+        "value": null
+      },
+      {
+        "name": "multiLanguages",
+        "value": []
+      },
+      {
+        "name": "failDownloads",
+        "value": []
+      }
+    ],
+    "implementationName": "Newznab",
+    "implementation": "Newznab",
+    "configContract": "NewznabSettings",
+    "tags": [],
+    "id": 4
+  },
+  {
+    "enableRss": false,
+    "enableAutomaticSearch": false,
+    "enableInteractiveSearch": true,
+    "supportsRss": true,
+    "supportsSearch": true,
+    "protocol": "torrent",
+    "priority": 25,
+    "seasonSearchMaximumSingleEpisodeAge": 0,
+    "downloadClientId": "[REDACTED]",
+    "name": "Knaben (Prowlarr)",
+    "fields": [
+      {
+        "name": "baseUrl",
+        "value": "http://127.0.0.1:9696/1/"
+      },
+      {
+        "name": "apiPath",
+        "value": "/api"
+      },
+      {
+        "name": "apiKey",
+        "value": "[REDACTED]"
+      },
+      {
+        "name": "categories",
+        "value": [
+          5000,
+          5040,
+          5030,
+          5045,
+          5020,
+          5050
+        ]
+      },
+      {
+        "name": "animeCategories",
+        "value": [
+          5070
+        ]
+      },
+      {
+        "name": "animeStandardFormatSearch",
+        "value": true
+      },
+      {
+        "name": "additionalParameters",
+        "value": null
+      },
+      {
+        "name": "multiLanguages",
+        "value": []
+      },
+      {
+        "name": "failDownloads",
+        "value": []
+      },
+      {
+        "name": "minimumSeeders",
+        "value": 1
+      },
+      {
+        "name": "seedCriteria.seedRatio",
+        "value": null
+      },
+      {
+        "name": "seedCriteria.seedTime",
+        "value": null
+      },
+      {
+        "name": "seedCriteria.seasonPackSeedTime",
+        "value": null
+      },
+      {
+        "name": "rejectBlocklistedTorrentHashesWhileGrabbing",
+        "value": false
+      }
+    ],
+    "implementationName": "Torznab",
+    "implementation": "Torznab",
+    "configContract": "TorznabSettings",
+    "tags": [],
+    "id": 1
+  },
+  {
+    "enableRss": true,
+    "enableAutomaticSearch": true,
+    "enableInteractiveSearch": true,
+    "supportsRss": true,
+    "supportsSearch": true,
+    "protocol": "usenet",
+    "priority": 25,
+    "seasonSearchMaximumSingleEpisodeAge": 0,
+    "downloadClientId": "[REDACTED]",
+    "name": "NinjaCentral (Prowlarr)",
+    "fields": [
+      {
+        "name": "baseUrl",
+        "value": "http://127.0.0.1:9696/4/"
+      },
+      {
+        "name": "apiPath",
+        "value": "/api"
+      },
+      {
+        "name": "apiKey",
+        "value": "[REDACTED]"
+      },
+      {
+        "name": "categories",
+        "value": [
+          5000,
+          5020,
+          5040,
+          5050,
+          5030,
+          5045
+        ]
+      },
+      {
+        "name": "animeCategories",
+        "value": [
+          5070
+        ]
+      },
+      {
+        "name": "animeStandardFormatSearch",
+        "value": true
+      },
+      {
+        "name": "additionalParameters",
+        "value": null
+      },
+      {
+        "name": "multiLanguages",
+        "value": []
+      },
+      {
+        "name": "failDownloads",
+        "value": []
+      }
+    ],
+    "implementationName": "Newznab",
+    "implementation": "Newznab",
+    "configContract": "NewznabSettings",
+    "tags": [],
+    "id": 2
+  }
+]
